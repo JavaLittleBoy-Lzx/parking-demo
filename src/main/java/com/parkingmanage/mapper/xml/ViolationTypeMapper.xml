@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ViolationTypeMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.ViolationType">
+        <id column="id" property="id"/>
+        <result column="type_name" property="typeName"/>
+        <result column="type_code" property="typeCode"/>
+        <result column="park_name" property="parkName"/>
+        <result column="severity_level" property="severityLevel"/>
+        <result column="icon" property="icon"/>
+        <result column="description" property="description"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="is_enabled" property="isEnabled"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <!-- 分页查询违规类型列表 -->
+    <select id="selectTypePage" resultMap="BaseResultMap">
+        SELECT
+            id, type_name, type_code, park_name,
+            severity_level, icon, description,
+            sort_order, is_enabled,
+            created_at, updated_at
+        FROM violation_types
+        <where>
+            <if test="typeName != null and typeName != ''">
+                AND type_name LIKE CONCAT('%', #{typeName}, '%')
+            </if>
+            <if test="parkName != null and parkName != ''">
+                AND park_name = #{parkName}
+            </if>
+            <if test="isEnabled != null">
+                AND is_enabled = #{isEnabled}
+            </if>
+        </where>
+        ORDER BY sort_order ASC, created_at DESC
+    </select>
+
+    <!-- 查询启用的违规类型列表（用于下拉选择） -->
+    <select id="selectEnabledTypes" resultMap="BaseResultMap">
+        SELECT
+            id, type_name, type_code, park_name,
+            severity_level, icon, description,
+            sort_order, is_enabled,
+            created_at, updated_at
+        FROM violation_types
+        WHERE is_enabled = 1
+        <choose>
+            <when test="parkName != null and parkName != ''">
+                AND (park_name = #{parkName} OR park_name IS NULL)
+            </when>
+            <otherwise>
+                AND park_name IS NULL
+            </otherwise>
+        </choose>
+        ORDER BY sort_order ASC, type_name ASC
+    </select>
+
+    <!-- 根据类型代码和车场查询 -->
+    <select id="selectByCodeAndPark" resultMap="BaseResultMap">
+        SELECT
+            id, type_name, type_code, park_name,
+            severity_level, icon, description,
+            sort_order, is_enabled,
+            created_at, updated_at
+        FROM violation_types
+        WHERE type_code = #{typeCode}
+        <choose>
+            <when test="parkName != null and parkName != ''">
+                AND park_name = #{parkName}
+            </when>
+            <otherwise>
+                AND park_name IS NULL
+            </otherwise>
+        </choose>
+        LIMIT 1
+    </select>
+
+</mapper>
+

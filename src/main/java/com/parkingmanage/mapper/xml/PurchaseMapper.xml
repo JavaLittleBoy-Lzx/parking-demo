@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.PurchaseMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Purchase">
+        <id column="purchase_id" property="purchaseId" />
+        <result column="department_id" property="departmentId" />
+        <result column="device_name" property="deviceName" />
+        <result column="device_price" property="devicePrice" />
+        <result column="order_quantity" property="orderQuantity" />
+        <result column="application_time" property="applicationTime" />
+        <result column="applicant_user_id" property="applicantUserId" />
+        <result column="application_reason" property="applicationReason" />
+        <result column="audius_user_id" property="audiusUserId" />
+        <result column="audit_status" property="auditStatus" />
+        <result column="audius_time" property="audiusTime" />
+        <result column="deleted" property="deleted" />
+        <result column="supplier_id" property="supplierId" />
+        <result column="file_reason" property="fileReason" />
+        <result column="purchase_voucher" property="purchaseVoucher" />
+        <result column="model" property="model" />
+        <result column="device_type" property="deviceType" />
+        <result column="purchase_time" property="purchaseTime"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        purchase_id, department_id, device_name, device_price, order_quantity, application_time, applicant_user_id, application_reason, audius_user_id, audit_status, audius_time,
+         deleted, supplier_id, file_reason,purchase_voucher,model,device_type,purchase_time
+    </sql>
+
+</mapper>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.GateMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Gate">
+        <id column="id" property="id" />
+        <result column="province" property="province" />
+        <result column="city" property="city" />
+        <result column="district" property="district" />
+        <result column="community" property="community" />
+        <result column="parkingcode" property="parkingcode" />
+        <result column="parkingkey" property="parkingkey" />
+        <result column="parkingsecret" property="parkingsecret" />
+        <result column="gatename" property="gatename" />
+    </resultMap>
+    <!-- 通用查询结果列-->
+    <sql id="Base_Column_List">
+        province, city, district, community, id, parkingcode, parkingkey, parkingsecret, gatename
+    </sql>
+    <select id="duplicate" resultType="java.lang.Integer">
+        select count(*) from gate  where province=#{province} and city=#{city}
+        and district=#{district} and community=#{community} and gatename=#{gatename}
+        <if test="id!=null and id !=''">
+            and id &lt;&gt;#{id}
+        </if>
+    </select>
+    <select id="queryGate" resultType="com.parkingmanage.entity.Gate">
+        select a.* from gate a
+        ${ew.customSqlSegment}
+    </select>
+
+</mapper>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.BlacklistReasonMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.BlacklistReason">
+        <id column="id" property="id"/>
+        <result column="reason_text" property="reasonText"/>
+        <result column="reason_category" property="reasonCategory"/>
+        <result column="park_name" property="parkName"/>
+        <result column="usage_count" property="usageCount"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="is_enabled" property="isEnabled"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <!-- 分页查询拉黑原因列表 -->
+    <select id="selectReasonPage" resultMap="BaseResultMap">
+        SELECT
+            id, reason_text, reason_category, park_name,
+            usage_count, sort_order, is_enabled,
+            created_by, created_at, updated_at
+        FROM blacklist_reasons
+        <where>
+            <if test="reasonText != null and reasonText != ''">
+                AND reason_text LIKE CONCAT('%', #{reasonText}, '%')
+            </if>
+            <if test="reasonCategory != null and reasonCategory != ''">
+                AND reason_category = #{reasonCategory}
+            </if>
+            <if test="parkName != null and parkName != ''">
+                AND park_name = #{parkName}
+            </if>
+            <if test="isEnabled != null">
+                AND is_enabled = #{isEnabled}
+            </if>
+        </where>
+        ORDER BY sort_order ASC, usage_count DESC, created_at DESC
+    </select>
+
+    <!-- 查询启用的拉黑原因列表（用于下拉选择） -->
+    <select id="selectEnabledReasons" resultMap="BaseResultMap">
+        SELECT
+            id, reason_text, reason_category, park_name,
+            usage_count, sort_order, is_enabled,
+            created_by, created_at, updated_at
+        FROM blacklist_reasons
+        WHERE is_enabled = 1
+        <if test="reasonCategory != null and reasonCategory != ''">
+            AND reason_category = #{reasonCategory}
+        </if>
+        <if test="parkName != null and parkName != ''">
+            AND (park_name = #{parkName} OR park_name IS NULL)
+        </if>
+        ORDER BY sort_order ASC, usage_count DESC, reason_text ASC
+    </select>
+
+    <!-- 增加使用次数 -->
+    <update id="incrementUsageCount">
+        UPDATE blacklist_reasons
+        SET usage_count = usage_count + 1
+        WHERE id = #{id}
+    </update>
+
+</mapper>
+

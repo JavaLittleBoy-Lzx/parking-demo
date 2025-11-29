@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.BlackListMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.BlackList">
+        <id column="id" property="id" />
+        <result column="car_code" property="carCode" />
+        <result column="owner" property="owner" />
+        <result column="reason" property="reason" />
+        <result column="park_code" property="parkCode" />
+        <result column="park_name" property="parkName" />
+        <result column="operate_type" property="operateType" />
+        <result column="is_permanent" property="isPermanent" />
+        <result column="is_send" property="isSend" />
+        <result column="is_deleted" property="isDeleted" />
+        <result column="special_car_type_id" property="specialCarTypeId" />
+        <result column="add_time" property="addTime" />
+        <result column="operate_time" property="operateTime" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, car_code, owner, reason, park_code, park_name, operate_type, is_permanent, is_send, is_deleted, special_car_type_id, add_time, operate_time
+    </sql>
+
+</mapper>

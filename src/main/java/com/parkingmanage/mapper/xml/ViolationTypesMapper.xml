@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ViolationTypesMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.ViolationTypes">
+        <id column="id" property="id" />
+        <result column="name" property="name" />
+        <result column="value" property="value" />
+        <result column="icon" property="icon" />
+        <result column="category" property="category" />
+        <result column="usage_count" property="usageCount" />
+        <result column="is_active" property="isActive" />
+        <result column="sort_order" property="sortOrder" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+    </resultMap>
+
+    <!-- 获取分类的违规类型列表 -->
+    <select id="selectViolationTypesByCategory" resultType="com.parkingmanage.entity.ViolationTypes">
+        SELECT 
+            id, name, value, icon, category, usage_count, is_active, sort_order, created_at, updated_at
+        FROM violation_types
+        WHERE is_active = true
+        ORDER BY category, sort_order, usage_count DESC
+    </select>
+
+    <!-- 更新违规类型使用次数 -->
+    <update id="updateUsageCount">
+        UPDATE violation_types 
+        SET usage_count = usage_count + 1,
+            updated_at = NOW()
+        WHERE value = #{value}
+    </update>
+
+    <!-- 检查违规类型值是否已存在 -->
+    <select id="checkValueExists" resultType="int">
+        SELECT COUNT(*)
+        FROM violation_types
+        WHERE value = #{value}
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+
+    <!-- 获取启用的违规类型列表 -->
+    <select id="selectActiveTypes" resultType="com.parkingmanage.entity.ViolationTypes">
+        SELECT 
+            id, name, value, icon, category, usage_count, is_active, sort_order, created_at, updated_at
+        FROM violation_types
+        WHERE is_active = true
+        ORDER BY category, sort_order, usage_count DESC
+    </select>
+
+</mapper>

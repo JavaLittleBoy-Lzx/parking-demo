@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ParkStaffMapper">
+
+    <!-- 巡检人员状态统计 -->
+    <select id="selectStatusStats" resultType="map">
+        SELECT 
+            CASE 
+                WHEN status = 1 THEN '正常'
+                WHEN status = 0 THEN '禁用'
+                ELSE '未知'
+            END as statusName,
+            status,
+            COUNT(*) as count
+        FROM park_staff
+        GROUP BY status
+        ORDER BY status DESC
+    </select>
+
+    <!-- 巡检员发现问题类型分布 -->
+    <select id="selectProblemTypeDistribution" resultType="map">
+        SELECT 
+            v.violation_type as violationType,
+            COUNT(*) as count,
+            COALESCE(ps.real_name, '未知巡检员') as staffName,
+            COALESCE(ps.username, 'unknown') as username
+        FROM violations v
+        LEFT JOIN park_staff ps ON CAST(v.reporter_id AS CHAR) = CAST(ps.id AS CHAR)
+        WHERE v.created_at >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+          AND v.reporter_id IS NOT NULL
+        GROUP BY v.violation_type, ps.id, ps.real_name, ps.username
+        HAVING COUNT(*) > 0
+        ORDER BY count DESC, v.violation_type
+        LIMIT 100
+    </select>
+
+</mapper>
+

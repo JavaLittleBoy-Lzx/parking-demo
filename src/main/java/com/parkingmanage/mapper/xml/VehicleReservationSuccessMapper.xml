@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.VehicleReservationSuccessMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.VehicleReservationSuccess">
+        <id column="id" property="id" />
+        <result column="yard_code" property="yardCode" />
+        <result column="yard_name" property="yardName" />
+        <result column="plate_number" property="plateNumber" />
+        <result column="vehicle_classification" property="vehicleClassification" />
+        <result column="merchant_name" property="merchantName" />
+        <result column="release_reason" property="releaseReason" />
+        <result column="notifier_name" property="notifierName" />
+        <result column="appointment_time" property="appointmentTime" />
+        <result column="success_time" property="successTime" />
+        <result column="remark" property="remark" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, yard_code, yard_name, plate_number, vehicle_classification, merchant_name, release_reason, notifier_name, appointment_time, success_time, remark
+    </sql>
+
+</mapper>

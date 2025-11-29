@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.VehicleClassificationMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.VehicleClassification">
+        <id column="id" property="id" />
+        <result column="vehicle_classification" property="vehicleClassification" />
+        <result column="classification_no" property="classificationNo" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, vehicle_classification, classification_no
+    </sql>
+    <select id="vehicleClassificationList" resultType="com.parkingmanage.entity.VehicleClassification">
+        select DISTINCT a.vehicle_classification
+        from vehicle_classification a
+        ORDER BY a.vehicle_classification
+    </select>
+    <select id="duplicate" resultType="java.lang.Integer">
+        select count(*) from vehicle_classification  where vehicle_classification=#{vehicleClassification} and
+        classification_no=#{classificationNo}
+        <if test="id!=null and id !=''">
+            and id &lt;&gt;#{id}
+        </if>
+    </select>
+    <select id="getNameByCarNo" resultType="java.lang.String">
+        select vehicle_classification from vehicle_classification
+        where classification_no=#{enterCarType}
+    </select>
+    <select id="selectBytimeOutInterval" resultType="com.parkingmanage.entity.TimeOutVehicleList">
+        SELECT id, yard_name, plate_number, appointment_time, CONCAT(
+        IF(TIMESTAMPDIFF(DAY, appointment_time, NOW()) > 0, CONCAT(TIMESTAMPDIFF(DAY, appointment_time, NOW()), '天'), ''),
+        IF(TIMESTAMPDIFF(HOUR, appointment_time, NOW()) % 24 > 0, CONCAT(TIMESTAMPDIFF(HOUR, appointment_time, NOW()) % 24, '小时'), ''),
+        IF(TIMESTAMPDIFF(MINUTE, appointment_time, NOW()) % 60 > 0, CONCAT(TIMESTAMPDIFF(MINUTE, appointment_time, NOW()) % 60, '分钟'), ''),
+        IF(TIMESTAMPDIFF(SECOND, appointment_time, NOW()) % 60 > 0, CONCAT(TIMESTAMPDIFF(SECOND, appointment_time, NOW()) % 60, '秒'), '')
+        ) AS timeOutInterval
+        FROM vehicle_reservation
+        WHERE reserve_flag = 0 AND deleted = 0 AND (
+        (TIMESTAMPDIFF(DAY, appointment_time, NOW()) > 1) OR
+        (TIMESTAMPDIFF(DAY, appointment_time, NOW()) &lt;= 1 AND TIMESTAMPDIFF(HOUR,appointment_time, NOW()) % 24 > #{timeOutInterval})
+        );
+    </select>
+    <select id="selectByEnterTimeOutInterval" resultType="com.parkingmanage.entity.TimeOutVehicleList">
+        SELECT id, yard_name, plate_number, enter_time, TIMESTAMPDIFF(MICROSECOND, enter_time, NOW()) AS timeOutIntervalMS,  CONCAT(
+        IF(TIMESTAMPDIFF(DAY, enter_time, NOW()) > 0, CONCAT(TIMESTAMPDIFF(DAY, enter_time, NOW()), '天'), ''),
+        IF(TIMESTAMPDIFF(HOUR, enter_time, NOW()) % 24 > 0, CONCAT(TIMESTAMPDIFF(HOUR, enter_time, NOW()) % 24, '小时'), ''),
+        IF(TIMESTAMPDIFF(MINUTE, enter_time, NOW()) % 60 > 0, CONCAT(TIMESTAMPDIFF(MINUTE, enter_time, NOW()) % 60, '分钟'), ''),
+        IF(TIMESTAMPDIFF(SECOND, enter_time, NOW()) % 60 > 0, CONCAT(TIMESTAMPDIFF(SECOND, enter_time, NOW()) % 60, '秒'), '')
+        ) AS timeOutInterval
+        FROM vehicle_reservation
+        WHERE reserve_flag = 1 AND deleted = 0 AND yard_name = #{yardName}  AND (
+        (TIMESTAMPDIFF(HOUR, enter_time, NOW()) >= #{timeOutInterval}) AND TIMESTAMPDIFF(DAY, enter_time, NOW()) &lt; 2)
+        ORDER BY timeOutIntervalMS ASC;
+
+    </select>
+    <select id="selectByMinutesEnterTimeOutInterval" resultType="com.parkingmanage.entity.TimeOutVehicleList">
+        SELECT id, yard_name, plate_number, enter_time, CONCAT(
+        IF(TIMESTAMPDIFF(DAY, enter_time, NOW()) > 0, CONCAT(TIMESTAMPDIFF(DAY, enter_time, NOW()), '天'), ''),
+        IF(TIMESTAMPDIFF(HOUR, enter_time, NOW()) % 24 > 0, CONCAT(TIMESTAMPDIFF(HOUR, enter_time, NOW()) % 24, '小时'), ''),
+        IF(TIMESTAMPDIFF(MINUTE, enter_time, NOW()) % 60 > 0, CONCAT(TIMESTAMPDIFF(MINUTE, enter_time, NOW()) % 60, '分钟'), ''),
+        IF(TIMESTAMPDIFF(SECOND, enter_time, NOW()) % 60 > 0, CONCAT(TIMESTAMPDIFF(SECOND, enter_time, NOW()) % 60, '秒'), '')
+        ) AS timeOutInterval
+        FROM vehicle_reservation
+        WHERE reserve_flag = 1 AND deleted = 0 AND (
+        (TIMESTAMPDIFF(MINUTE, enter_time, NOW()) >= #{timeOutInterval}) AND TIMESTAMPDIFF(DAY, enter_time, NOW()) &lt; 2);
+    </select>
+</mapper>

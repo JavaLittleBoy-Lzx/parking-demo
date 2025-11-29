@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.MaintenanceMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Maintenance">
+        <id column="maintenance_id" property="maintenanceId"/>
+        <result column="device_id" property="deviceId"/>
+        <result column="device_code" property="deviceCode"/>
+        <result column="device_name" property="deviceName"/>
+        <result column="department_id" property="departmentId"/>
+        <result column="department_address" property="departmentAddress"/>
+        <result column="maintenance_user_id" property="maintenanceUserId"/>
+        <result column="repair_time" property="repairTime"/>
+        <result column="repairman_user_id" property="repairmanUserId"/>
+        <result column="repair_reason" property="repairReason"/>
+        <result column="fault_description" property="faultDescription"/>
+        <result column="audit_status" property="auditStatus"/>
+        <result column="maintain_time" property="maintainTime"/>
+        <result column="remarks" property="remarks"/>
+        <result column="deleted" property="deleted"/>
+        <result column="device_type" property="deviceType"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        maintenance_id, device_id, device_code, device_name, department_id, department_address, maintenance_user_id, repair_time, repairman_user_id, repair_reason, fault_description, audit_status, maintain_time, remarks, deleted,device_type
+    </sql>
+    <select id="getByTypeMaintenance" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from maintenance
+        where repair_time &gt; DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
+    </select>
+
+</mapper>

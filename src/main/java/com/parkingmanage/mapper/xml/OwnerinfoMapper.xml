@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.OwnerinfoMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Ownerinfo">
+        <id column="id" property="id" />
+        <result column="province" property="province" />
+        <result column="city" property="city" />
+        <result column="district" property="district" />
+        <result column="community" property="community" />
+        <result column="building" property="building" />
+        <result column="units" property="units" />
+        <result column="floor" property="floor" />
+        <result column="roomnumber" property="roomnumber" />
+        <result column="ownername" property="ownername" />
+        <result column="ownerphone" property="ownerphone" />
+        <result column="isaudit" property="isaudit" />
+        <result column="permitverify" property="permitverify" />
+        <result column="plates" property="plates" />
+        <result column="parkingspaces" property="parkingspaces" />
+        <result column="credit_score" property="creditScore" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        province, city, district, community, id, building, units, floor, roomnumber, ownername, ownerphone,isaudit,permitverify,plates,parkingspaces,credit_score
+    </sql>
+    <update id="updateByIdNew">
+        UPDATE ownerinfo SET province=#{province},
+        city=#{city},
+        district=#{district},
+        community=#{community},
+        building=#{building},
+        units=#{units},
+        floor=#{floor},
+        roomnumber=#{roomnumber},
+        ownername=#{ownername},
+        ownerphone=#{ownerphone},
+        isaudit=#{isaudit},
+        permitverify=#{permitverify},
+        plates=#{plates},
+        parkingspaces=#{parkingspaces} WHERE
+        id=#{id}
+    </update>
+    <select id="queryOwner" resultType="com.parkingmanage.entity.Ownerinfo">
+        select a.*
+        from Ownerinfo a
+        ${ew.customSqlSegment}
+    </select>
+    <select id="duplicate" resultType="java.lang.Integer">
+        select count(*) from ownerinfo  where province=#{province}  and city=#{city}
+        and district=#{district} and community=#{community} and building=#{building}
+        and units=#{units} and floor=#{floor} and roomnumber=#{roomnumber}
+        <if test="id!=null and id !=''">
+            and id &lt;&gt;#{id}
+        </if>
+    </select>
+    <select id="myCommunity" resultType="java.lang.String">
+        select distinct community from ownerinfo  where ownerphone=#{userphone}
+    </select>
+    <select id="myRooms" resultType="com.parkingmanage.entity.Ownerinfo">
+        select  community, id, building, units, floor, roomnumber, ownername, ownerphone,isaudit,permitverify,plates,parkingspaces from ownerinfo
+        where community=#{community}
+        <if test="building != null and building != ''">
+            and building=#{building}
+        </if>
+        <if test="units != null and units != ''">
+            and units=#{units}
+        </if>
+        <if test="floor != null and floor != ''">
+            and floor=#{floor}
+        </if>
+        <if test="roomnumber != null and roomnumber != ''">
+            and roomnumber=#{roomnumber}
+        </if>
+        <if test="userphone != null and userphone != ''">
+            and ownerphone=#{userphone}
+        </if>
+         order by community, building, units, floor, roomnumber
+    </select>
+    <select id="listByPhone" resultType="com.parkingmanage.entity.Ownerinfo">
+        select credit_score, province, city, district, community, id, building, units, floor, roomnumber, ownername, ownerphone,isaudit,permitverify,plates,parkingspaces from ownerinfo
+        where  ownerphone=#{userphone}
+         order by community, building, units, floor, roomnumber
+    </select>
+    <select id="phoneNumberOwnerInfo" resultType="com.parkingmanage.entity.Ownerinfo">
+        SELECT * FROM ownerinfo WHERE ownerphone = #{phoneNumber}
+    </select>
+    <select id="OwnerInfoByPhone" resultType="java.lang.Integer">
+
+    </select>
+    <select id="getManagerNicknameByCommunityName" resultType="java.lang.String">
+        SELECT ownername FROM ownerinfo WHERE community = #{communityName}
+    </select>
+
+</mapper>

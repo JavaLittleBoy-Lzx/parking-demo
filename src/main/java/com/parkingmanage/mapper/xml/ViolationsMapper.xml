@@ -1,0 +1,785 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ViolationsMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Violations">
+        <id column="id" property="id" />
+        <result column="plate_number" property="plateNumber" />
+        <result column="owner_id" property="ownerId" />
+        <result column="appointment_id" property="appointmentId" />
+        <result column="violation_type" property="violationType" />
+        <result column="custom_type" property="customType" />
+        <result column="location" property="location" />
+        <result column="description" property="description" />
+        <result column="appointment_time" property="appointmentTime" />
+        <result column="enter_time" property="enterTime" />
+        <result column="leave_time" property="leaveTime" />
+        <result column="status" property="status" />
+        <result column="severity" property="severity" />
+        <result column="reporter_id" property="reporterId" />
+        <result column="handler_id" property="handlerId" />
+        <result column="photos" property="photos" />
+        <result column="voice_memo" property="voiceMemo" />
+        <result column="remark" property="remark" />
+        <result column="should_blacklist" property="shouldBlacklist" />
+        <result column="blacklist_reason" property="blacklistReason" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+    </resultMap>
+
+    <!-- 分页查询违规记录 -->
+    <select id="selectViolationsWithOwnerInfo" resultType="map">
+        SELECT 
+            v.id,
+            v.plate_number as plateNumber,
+            v.appointment_id as appointmentId,
+            v.violation_type as violationType,
+            v.custom_type as customType,
+            v.location,
+            v.description,
+            v.appointment_time as appointmentTime,
+            v.enter_time as enterTime,
+            v.leave_time as leaveTime,
+            v.status,
+            CASE 
+                WHEN v.status = 'pending' THEN '待处理'
+                WHEN v.status = 'processing' THEN '处理中'
+                WHEN v.status = 'completed' THEN '已处理'
+                WHEN v.status = 'cancelled' THEN '已取消'
+            END as statusText,
+            v.severity,
+            v.photos,
+            v.voice_memo as voiceMemo,
+            v.remark,
+            v.should_blacklist as shouldBlacklist,
+            v.blacklist_reason as blacklistReason,
+            v.created_at as createdAt,
+            -- 业主信息（优先预约记录，其次本地车主，最后月票车主）
+            COALESCE(apt.ownername, o.ownername, mt.user_name) as ownerName,
+            COALESCE(apt.ownerphone, o.ownerphone, mt.user_phone) as ownerPhone,
+            CASE 
+                WHEN apt.id IS NOT NULL THEN CONCAT(apt.community, apt.building, '栋', apt.units, '单元', apt.room, '室')
+                WHEN o.id IS NOT NULL THEN CONCAT(o.building, '栋', o.units, '单元', o.roomnumber, '室')
+                WHEN mt.id IS NOT NULL THEN CONCAT(mt.park_name, '停车场月票车主')
+                ELSE NULL 
+            END as ownerAddress,
+            o.credit_score as creditScore,
+            -- 业主类型标识
+            CASE 
+                WHEN apt.id IS NOT NULL THEN 'appointment'
+                WHEN o.id IS NOT NULL THEN 'local'
+                WHEN mt.id IS NOT NULL THEN 'monthly'
+                ELSE 'unknown'
+            END as ownerType,
+            -- 月票信息（仅月票车主有）
+            mt.ticket_name as monthTicketName,
+            mt.park_name as parkName,
+            mt.valid_status as monthTicketStatus,
+            -- 🆕 预约详细信息（仅预约车有）
+            apt.visitreason as appointmentReason,
+            apt.appointtype as appointmentType,
+            apt.auditusername as auditorName,
+            apt.auditstatus as appointmentStatus,
+            apt.visitdate as appointmentDate,
+            apt.auditdate as auditDate,
+            CASE 
+                WHEN LENGTH(v.plate_number) = 8 THEN true 
+                ELSE false 
+            END as isNewEnergy
+        FROM violations v
+        LEFT JOIN ownerinfo o ON v.owner_id = o.id
+        LEFT JOIN month_tick mt ON v.month_ticket_id = mt.id
+        LEFT JOIN appointment apt ON v.appointment_id = apt.id
+        <where>
+            <if test="plateNumber != null and plateNumber != ''">
+                AND v.plate_number LIKE CONCAT('%', #{plateNumber}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND v.status = #{status}
+            </if>
+            <if test="violationType != null and violationType != ''">
+                AND v.violation_type = #{violationType}
+            </if>
+            <if test="startDate != null">
+                AND v.created_at >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND v.created_at &lt;= #{endDate}
+            </if>
+            <if test="createdByFilter != null">
+                AND v.created_by = #{createdByFilter}
+            </if>
+            <!-- 🆕 小区过滤条件：管家只能查看所在小区的违规记录 -->
+            <if test="communityFilter != null and communityFilter != ''">
+                AND (
+                    -- 预约车辆：匹配预约表中的community字段
+                    (apt.id IS NOT NULL AND apt.community = #{communityFilter})
+                    OR
+                    -- 本地车主：匹配ownerinfo表中的community字段（如果有的话）
+                    (o.id IS NOT NULL AND o.community = #{communityFilter})
+                    OR
+                    -- 月票车主：匹配month_tick表中的park_name字段
+                    (mt.id IS NOT NULL AND mt.park_name = #{communityFilter})
+                OR
+                -- 月票车主：匹配month_tick表中的park_name字段
+                (v.id IS NOT NULL AND v.park_name = #{communityFilter})
+                )
+            </if>
+        </where>
+        ORDER BY v.created_at DESC
+    </select>
+
+    <!-- 🎓 分页查询违规记录（直接查询模式，不关联其他表）-->
+    <select id="selectViolationsDirectQuery" resultType="map">
+        SELECT 
+            v.id,
+            v.plate_number as plateNumber,
+            v.appointment_id as appointmentId,
+            v.violation_type as violationType,
+            v.custom_type as customType,
+            v.location,
+            v.description,
+            v.appointment_time as appointmentTime,
+            v.enter_time as enterTime,
+            v.leave_time as leaveTime,
+            v.status,
+            CASE 
+                WHEN v.status = 'pending' THEN '待处理'
+                WHEN v.status = 'processing' THEN '处理中'
+                WHEN v.status = 'completed' THEN '已处理'
+                WHEN v.status = 'cancelled' THEN '已取消'
+            END as statusText,
+            v.severity,
+            v.photos,
+            v.voice_memo as voiceMemo,
+            v.remark,
+            v.should_blacklist as shouldBlacklist,
+            v.blacklist_reason as blacklistReason,
+            v.created_at as createdAt,
+            v.created_by as createdBy,
+            -- 🎓 直接使用violations表中的业主信息字段
+            v.owner_name as ownerName,
+            v.owner_phone as ownerPhone,
+            v.owner_category as ownerCategory,
+            v.park_name as parkName,
+            -- 业主类型标识（根据is_monthly_ticket字段判断）
+            CASE 
+                WHEN v.is_monthly_ticket = 1 THEN 'monthly'
+                WHEN v.owner_category = '业主' THEN 'local'
+                ELSE 'visitor'
+            END as ownerType,
+            -- 从violations表直接读取的字段
+            v.vip_type_name as monthTicketName,
+            v.owner_address as ownerAddress,
+            v.customer_company as customerCompany,
+            v.customer_room_number as customerRoomNumber,
+            -- 默认空值字段（保持与关联查询返回结构一致）
+            NULL as creditScore,
+            NULL as monthTicketStatus,
+            NULL as appointmentReason,
+            NULL as appointmentType,
+            NULL as auditorName,
+            NULL as appointmentStatus,
+            NULL as appointmentDate,
+            NULL as auditDate,
+            CASE 
+                WHEN LENGTH(v.plate_number) = 8 THEN true 
+                ELSE false 
+            END as isNewEnergy
+        FROM violations v
+        <where>
+            <if test="plateNumber != null and plateNumber != ''">
+                AND v.plate_number LIKE CONCAT('%', #{plateNumber}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND v.status = #{status}
+            </if>
+            <if test="violationType != null and violationType != ''">
+                AND v.violation_type = #{violationType}
+            </if>
+            <if test="startDate != null">
+                AND v.created_at >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND v.created_at &lt;= #{endDate}
+            </if>
+            <if test="createdByFilter != null">
+                AND v.created_by = #{createdByFilter}
+            </if>
+            <!-- 🎓 小区过滤条件：直接使用violations表的park_name字段 -->
+            <if test="communityFilter != null and communityFilter != ''">
+                AND v.park_name = #{communityFilter}
+            </if>
+        </where>
+        ORDER BY v.created_at DESC
+    </select>
+
+    <!-- 获取高风险车辆列表 -->
+    <select id="selectHighRiskVehicles" resultType="map">
+        SELECT 
+            v.plate_number as plateNumber,
+            COUNT(*) as count,
+            -- 业主信息（优先预约记录，其次本地车主，最后月票车主）
+            COALESCE(apt.ownername, o.ownername, mt.user_name) as ownerName,
+            COALESCE(apt.ownerphone, o.ownerphone, mt.user_phone) as phone,
+            CASE 
+                WHEN apt.id IS NOT NULL THEN CONCAT(apt.community, apt.building, '栋', apt.units, '单元', apt.room, '室')
+                WHEN o.id IS NOT NULL THEN CONCAT(o.building, '栋', o.units, '单元', o.roomnumber, '室')
+                WHEN mt.id IS NOT NULL THEN CONCAT(mt.park_name, '停车场月票车主')
+                ELSE '未知地址'
+            END as address,
+            o.credit_score as creditScore,
+            -- 业主类型标识
+            CASE 
+                WHEN apt.id IS NOT NULL THEN 'appointment'
+                WHEN o.id IS NOT NULL THEN 'local'
+                WHEN mt.id IS NOT NULL THEN 'monthly'
+                ELSE 'unknown'
+            END as ownerType,
+            -- 月票信息
+            mt.ticket_name as monthTicketName,
+            mt.park_name as parkName,
+            -- 🆕 预约详细信息（仅预约车有）
+            apt.visitreason as appointmentReason,
+            apt.appointtype as appointmentType,
+            apt.auditusername as auditorName,
+            apt.auditstatus as appointmentStatus,
+            apt.visitdate as appointmentDate,
+            apt.auditdate as auditDate,
+            CASE 
+                WHEN LENGTH(v.plate_number) = 8 THEN true 
+                ELSE false 
+            END as isNewEnergy,
+            GROUP_CONCAT(DISTINCT v.violation_type) as violationTypes,
+            MAX(v.created_at) as lastViolationTime
+        FROM violations v
+        LEFT JOIN ownerinfo o ON v.owner_id = o.id
+        LEFT JOIN month_tick mt ON v.month_ticket_id = mt.id
+        LEFT JOIN appointment apt ON v.appointment_id = apt.id
+        <where>
+            <if test="startDate != null">
+                AND v.created_at >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND v.created_at &lt;= #{endDate}
+            </if>
+        </where>
+        GROUP BY v.plate_number
+        HAVING count >= 2
+        ORDER BY count DESC, lastViolationTime DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <!-- 🎓 获取高风险车辆列表（直接查询模式，不关联其他表）-->
+    <select id="selectHighRiskVehiclesDirectQuery" resultType="map">
+        SELECT 
+            v.plate_number as plateNumber,
+            COUNT(*) as count,
+            -- 🎓 直接使用violations表中的业主信息字段
+            MAX(v.owner_name) as ownerName,
+            MAX(v.owner_phone) as phone,
+            MAX(COALESCE(v.owner_address, '未知地址')) as address,
+            -- 业主类型标识（根据is_monthly_ticket字段判断）
+            CASE 
+                WHEN v.is_monthly_ticket = 1 THEN 'monthly'
+                WHEN v.is_monthly_ticket = '0' THEN 'local'
+                ELSE 'visitor'
+            END as ownerType,
+            -- 从violations表直接读取的字段
+            MAX(v.vip_type_name) as monthTicketName,
+            MAX(v.park_name) as parkName,
+            MAX(v.customer_company) as customerCompany,
+            -- 默认空值字段（保持与关联查询返回结构一致）
+            NULL as creditScore,
+            NULL as appointmentReason,
+            NULL as appointmentType,
+            NULL as auditorName,
+            NULL as appointmentStatus,
+            NULL as appointmentDate,
+            NULL as auditDate,
+            CASE 
+                WHEN LENGTH(v.plate_number) = 8 THEN true 
+                ELSE false 
+            END as isNewEnergy,
+            GROUP_CONCAT(DISTINCT v.violation_type) as violationTypes,
+            MAX(v.created_at) as lastViolationTime
+        FROM violations v
+        <where>
+            <if test="startDate != null">
+                AND v.created_at >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND v.created_at &lt;= #{endDate}
+            </if>
+            <if test="createdByFilter != null">
+                AND v.created_by = #{createdByFilter}
+            </if>
+            <!-- 🎓 小区过滤条件：直接使用violations表的park_name字段 -->
+            <if test="communityFilter != null and communityFilter != ''">
+                AND v.park_name = #{communityFilter}
+            </if>
+        </where>
+        GROUP BY v.plate_number
+        HAVING count >= 2
+        ORDER BY count DESC, lastViolationTime DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <!-- 获取违规统计数据 -->
+    <select id="selectViolationStatistics" resultType="map">
+        SELECT 
+            v.status,
+            COUNT(*) as count
+        FROM violations v
+        <where>
+            <if test="startDate != null">
+                AND v.created_at >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND v.created_at &lt;= #{endDate}
+            </if>
+            <if test="plateNumber != null and plateNumber != ''">
+                AND v.plate_number = #{plateNumber}
+            </if>
+        </where>
+        GROUP BY v.status
+    </select>
+
+    <!-- 🎓 获取违规统计数据（支持创建者和小区过滤）-->
+    <select id="selectViolationStatisticsWithFilter" resultType="map">
+        SELECT 
+            v.status,
+            COUNT(*) as count
+        FROM violations v
+        <where>
+            <if test="startDate != null">
+                AND v.created_at >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND v.created_at &lt;= #{endDate}
+            </if>
+            <if test="plateNumber != null and plateNumber != ''">
+                AND v.plate_number = #{plateNumber}
+            </if>
+            <if test="createdByFilter != null">
+                AND v.created_by = #{createdByFilter}
+            </if>
+            <!-- 🎓 小区过滤条件：直接使用violations表的park_name字段 -->
+            <if test="communityFilter != null and communityFilter != ''">
+                AND v.park_name = #{communityFilter}
+            </if>
+        </where>
+        GROUP BY v.status
+    </select>
+
+    <!-- 根据车牌号查询车主ID -->
+    <select id="selectOwnerIdByPlateNumber" resultType="java.lang.Integer">
+        SELECT o.id FROM ownerinfo o
+        WHERE FIND_IN_SET(#{plateNumber}, REPLACE(o.plates, ' ', '')) > 0
+        AND o.isaudit = '是'
+        LIMIT 1
+    </select>
+
+    <!-- 更新车主信用分 -->
+    <update id="updateOwnerCreditScore">
+        UPDATE ownerinfo 
+        SET credit_score = GREATEST(0, credit_score - #{deduction})
+        WHERE id = #{ownerId}
+    </update>
+
+    <!-- 按日期统计违规数量 -->
+    <select id="selectDailyViolationStats" resultType="map">
+        SELECT 
+            DATE(v.created_at) as date,
+            COUNT(*) as count
+        FROM violations v
+        <where>
+            <if test="startDate != null">
+                AND v.created_at >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND v.created_at &lt;= #{endDate}
+            </if>
+            <if test="plateNumber != null and plateNumber != ''">
+                AND v.plate_number = #{plateNumber}
+            </if>
+        </where>
+        GROUP BY DATE(v.created_at)
+        ORDER BY date
+    </select>
+
+    <!-- 🎓 按日期统计违规数量（支持创建者和小区过滤）-->
+    <select id="selectDailyViolationStatsWithFilter" resultType="map">
+        SELECT 
+            DATE(v.created_at) as date,
+            COUNT(*) as count
+        FROM violations v
+        <where>
+            <if test="startDate != null">
+                AND v.created_at >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND v.created_at &lt;= #{endDate}
+            </if>
+            <if test="plateNumber != null and plateNumber != ''">
+                AND v.plate_number = #{plateNumber}
+            </if>
+            <if test="createdByFilter != null">
+                AND v.created_by = #{createdByFilter}
+            </if>
+            <!-- 🎓 小区过滤条件：直接使用violations表的park_name字段 -->
+            <if test="communityFilter != null and communityFilter != ''">
+                AND v.park_name = #{communityFilter}
+            </if>
+        </where>
+        GROUP BY DATE(v.created_at)
+        ORDER BY date
+    </select>
+
+    <!-- 按违规类型统计 -->
+    <select id="selectViolationTypeStats" resultType="map">
+        SELECT 
+            v.violation_type as violationType,
+            COUNT(*) as count
+        FROM violations v
+        <where>
+            <if test="startDate != null">
+                AND v.created_at >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND v.created_at &lt;= #{endDate}
+            </if>
+        </where>
+        GROUP BY v.violation_type
+        ORDER BY count DESC
+    </select>
+
+    <!-- 🎓 按违规类型统计（支持创建者和小区过滤）-->
+    <select id="selectViolationTypeStatsWithFilter" resultType="map">
+        SELECT 
+            v.violation_type as violationType,
+            COUNT(*) as count
+        FROM violations v
+        <where>
+            <if test="startDate != null">
+                AND v.created_at >= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND v.created_at &lt;= #{endDate}
+            </if>
+            <if test="createdByFilter != null">
+                AND v.created_by = #{createdByFilter}
+            </if>
+            <!-- 🎓 小区过滤条件：直接使用violations表的park_name字段 -->
+            <if test="communityFilter != null and communityFilter != ''">
+                AND v.park_name = #{communityFilter}
+            </if>
+        </where>
+        GROUP BY v.violation_type
+        ORDER BY count DESC
+    </select>
+
+    <!-- 根据车牌号查询预约记录（用于违规录入） -->
+    <select id="selectAppointmentRecordsByPlate" resultType="map">
+        SELECT 
+            a.id,
+            a.plateNumber,
+            a.visitdate,
+            a.recorddate,
+            a.arrivedate,
+            a.leavedate,
+            a.cartype,
+            a.community,
+            a.building,
+            a.units,
+            a.floor,
+            a.room,
+            a.ownername,
+            a.ownerphone,
+            a.status,
+            a.auditstatus,
+            CASE 
+                WHEN a.auditstatus = 'approved' THEN '已审核'
+                WHEN a.auditstatus = 'pending' THEN '待审核'
+                WHEN a.auditstatus = 'rejected' THEN '已拒绝'
+                ELSE '未知状态'
+            END as auditStatusText,
+            CASE 
+                WHEN a.arrivedate IS NOT NULL AND a.leavedate IS NOT NULL THEN '已离场'
+                WHEN a.arrivedate IS NOT NULL AND a.leavedate IS NULL THEN '在场中'
+                WHEN a.arrivedate IS NULL THEN '未进场'
+                ELSE '未知'
+            END as parkingStatus
+        FROM appointment a
+        WHERE a.plateNumber = #{plateNumber}
+            AND a.auditstatus != 'pending'  -- 排除待审核的记录
+        ORDER BY a.recorddate DESC
+        LIMIT 10  -- 最多返回10条记录
+    </select>
+
+    <!-- 🆕 根据预约记录ID查询业主信息 -->
+    <select id="selectOwnerByAppointmentId" resultType="map">
+        SELECT
+            a.visitorname,
+            a.id as appointmentId,
+            a.plateNumber,
+            a.ownername as ownerName,
+            a.ownerphone as ownerPhone,
+            CONCAT(a.community, a.building, '栋', a.units, '单元', a.room, '室') as ownerAddress,
+            'appointment' as ownerType,
+            a.visitdate as appointmentDate,
+            a.arrivedate,
+            a.leavedate,
+            a.auditstatus as appointmentStatus,
+            -- 🆕 预约详细信息
+            a.visitreason as appointmentReason,
+            a.appointtype as appointmentType,
+            a.auditusername as auditorName,
+            a.auditdate as auditDate,
+            a.recorddate,
+            a.refusereason as refuseReason,
+            a.venuestatus as venueStatus,
+            a.parking as parkingInfo
+        FROM appointment a
+        WHERE a.id = #{appointmentId}
+        LIMIT 1
+    </select>
+    
+    <!-- 🆕 根据车牌号查询车主信息（只查询月票车主） -->
+    <select id="selectOwnerByPlateNumber" resultType="map">
+        SELECT 
+            -- 月票车主基本信息
+            mt.user_name as ownerName,
+            mt.user_phone as ownerPhone,
+            CONCAT(mt.park_name, '停车场月票车主') as ownerAddress,
+            mt.id as ownerId,
+            'monthly' as ownerType,
+            -- 月票详细信息
+            mt.ticket_name as monthTicketName,
+            mt.park_name as parkName,
+            mt.valid_status as monthTicketStatus,
+            mt.car_no as registeredPlates,
+            mt.create_time as registrationDate,
+            #{plateNumber} as plateNumber
+        FROM month_tick mt 
+        WHERE FIND_IN_SET(#{plateNumber}, REPLACE(mt.car_no, ' ', '')) > 0 
+            AND mt.valid_status = 1
+        ORDER BY mt.create_time DESC
+        LIMIT 1
+    </select>
+
+    <!-- ==================== 🆕 违规记录处理功能SQL ====================  -->
+    
+    <!-- 统计指定车牌的未处理违规次数 -->
+    <select id="countUnprocessedByPlate" resultType="int">
+        SELECT COUNT(*)
+        FROM violations
+        WHERE plate_number = #{plateNumber}
+          AND (process_status IS NULL OR process_status = 'pending')
+    </select>
+    
+    <!-- 批量更新指定车牌的违规记录处理状态 -->
+    <update id="batchUpdateProcessStatusByPlate">
+        UPDATE violations
+        SET process_status = #{processStatus},
+            process_type = #{processType},
+            processed_at = #{processedAt},
+            processed_by = #{processedBy},
+            process_remark = #{processRemark},
+            updated_at = NOW()
+        WHERE plate_number = #{plateNumber}
+          AND (process_status IS NULL OR process_status = 'pending')
+    </update>
+    
+    <!-- 分页查询违规记录（直接查询模式，支持处理状态筛选） -->
+    <select id="selectViolationsDirectQueryWithProcess" resultType="map">
+        SELECT 
+            v.id,
+            v.plate_number as plateNumber,
+            v.violation_type as violationType,
+            v.custom_type as customType,
+            v.location,
+            v.description,
+            v.park_code as parkCode,
+            v.park_name as parkName,
+            v.appointment_time as appointmentTime,
+            v.enter_time as enterTime,
+            v.leave_time as leaveTime,
+            v.status,
+            v.severity,
+            v.photos,
+            v.voice_memo as voiceMemo,
+            v.remark,
+            v.should_blacklist as shouldBlacklist,
+            v.blacklist_reason as blacklistReason,
+            v.blacklist_type_code as blacklistTypeCode,
+            v.blacklist_type_name as blacklistTypeName,
+            v.created_at as createdAt,
+            v.created_by as createdBy,
+            -- 🎓 直接从violations表读取的业主信息（东北林业大学等场景）
+            v.month_ticket_id as monthTicketId,
+            v.is_monthly_ticket as isMonthlyTicket,
+            v.vip_type_name as violationsVipTypeName,
+            v.owner_name as violationsOwnerName,
+            v.owner_phone as violationsOwnerPhone,
+            v.owner_address as violationsOwnerAddress,
+            -- 🎫 月票类型名称：优先使用violations表的vip_type_name，若为空则使用month_tick表的ticket_name
+            COALESCE(NULLIF(v.vip_type_name, ''), mt.ticket_name) as vipTypeName,
+            -- 🔧 预约车辆的业主信息（保留原始字段）
+            a.ownername as appointmentOwnerName,
+            a.ownerphone as appointmentOwnerPhone,
+            -- 🔧 合并后的业主信息：预约车优先用appointment，月票车优先用violations，最后用month_tick
+            COALESCE(NULLIF(a.ownername, ''), NULLIF(v.owner_name, ''), mt.user_name) as ownerName,
+            COALESCE(NULLIF(a.ownerphone, ''), NULLIF(v.owner_phone, ''), mt.user_phone) as ownerPhone,
+            COALESCE(NULLIF(v.owner_address, ''), CONCAT(mt.park_name, '停车场月票车主')) as ownerAddress,
+            v.owner_category as ownerCategory,
+            v.customer_company as customerCompany,
+            v.customer_room_number as customerRoomNumber,
+            -- 🎫 从month_tick表关联获取的月票信息（新增字段，用于前端显示完整月票信息）
+            mt.ticket_name as monthTicketName,
+            mt.user_name as monthTicketUserName,
+            mt.user_phone as monthTicketUserPhone,
+            mt.park_name as monthTicketParkName,
+            -- 🔧 业主类型标识（根据is_monthly_ticket字段判断）
+            CASE 
+                WHEN v.is_monthly_ticket = 1 THEN 'monthly'
+                WHEN v.owner_category = '业主' THEN 'local'
+                ELSE 'visitor'
+            END as ownerType,
+            -- 🆕 处理状态相关字段
+            v.process_status as processStatus,
+            v.process_type as processType,
+            v.processed_at as processedAt,
+            v.processed_by as processedBy,
+            v.process_remark as processRemark,
+            CASE 
+                WHEN LENGTH(v.plate_number) = 8 THEN true 
+                ELSE false 
+            END as isNewEnergy
+        FROM violations v
+        LEFT JOIN month_tick mt ON v.month_ticket_id = mt.id
+        LEFT JOIN appointment a ON v.appointment_id = a.id
+        <where>
+            <if test="plateNumber != null and plateNumber != ''">
+                AND v.plate_number LIKE CONCAT('%', #{plateNumber}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND v.status = #{status}
+            </if>
+            <if test="violationType != null and violationType != ''">
+                AND v.violation_type = #{violationType}
+            </if>
+            <if test="startDate != null">
+                AND v.created_at &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND v.created_at &lt;= #{endDate}
+            </if>
+            <if test="createdByFilter != null and createdByFilter != ''">
+                AND v.created_by = #{createdByFilter}
+            </if>
+            <if test="communityFilter != null and communityFilter != ''">
+                AND v.park_name = #{communityFilter}
+            </if>
+            <!-- 🆕 处理状态筛选 -->
+            <if test="processStatus != null and processStatus != ''">
+                AND v.process_status = #{processStatus}
+            </if>
+            <!-- 🆕 处理方式筛选 -->
+            <if test="processType != null and processType != ''">
+                AND v.process_type = #{processType}
+            </if>
+            <!-- 🆕 仅查询未处理的记录（小程序端使用） -->
+            <if test="onlyUnprocessed != null and onlyUnprocessed == true">
+                AND (v.process_status IS NULL OR v.process_status = 'pending')
+            </if>
+        </where>
+        ORDER BY v.created_at DESC
+    </select>
+
+    <!-- ==================== 📊 新增统计查询 ==================== -->
+
+    <!-- 1. 高频违规车辆Top统计 -->
+    <select id="selectTopViolators" resultType="map">
+        SELECT 
+            v.plate_number as plateNumber,
+            v.park_name as parkName,
+            COUNT(*) as violationCount,
+            GROUP_CONCAT(DISTINCT v.violation_type SEPARATOR ', ') as violationTypes,
+            MAX(v.created_at) as lastViolationTime
+        FROM violations v
+        WHERE v.created_at >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        GROUP BY v.plate_number, v.park_name
+        ORDER BY violationCount DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 2. 违规记录趋势统计（近N天） -->
+    <select id="selectViolationTrend" resultType="map">
+        SELECT 
+            DATE_FORMAT(created_at, '%Y-%m-%d') as date,
+            park_name as parkName,
+            COUNT(*) as count,
+            COUNT(DISTINCT plate_number) as uniqueVehicles
+        FROM violations
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d'), park_name
+        ORDER BY date ASC, parkName ASC
+    </select>
+
+    <!-- 3. 违规类型趋势分析（近N天） - 从violation_types表查询未被禁用的类型 -->
+    <select id="selectViolationTypeTrend" resultType="map">
+        SELECT 
+            DATE_FORMAT(v.created_at, '%Y-%m-%d') as date,
+            v.park_name as parkName,
+            COALESCE(vt.type_name, v.violation_type) as violationType,
+            COUNT(*) as count
+        FROM violations v
+        LEFT JOIN violation_types vt ON v.violation_type COLLATE utf8mb4_unicode_ci = vt.type_code COLLATE utf8mb4_unicode_ci
+        WHERE v.created_at >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+          AND (vt.is_enabled IS NULL OR vt.is_enabled = 1)
+        GROUP BY DATE_FORMAT(v.created_at, '%Y-%m-%d'), v.park_name, COALESCE(vt.type_name, v.violation_type)
+        ORDER BY date ASC, parkName ASC, violationType ASC
+    </select>
+
+    <!-- 4. 各位置违规频次统计 -->
+    <select id="selectLocationFrequency" resultType="map">
+        SELECT
+            v.location,
+            v.park_name as parkName,
+            COUNT(*) as count,
+            COUNT(DISTINCT v.plate_number) as uniqueVehicles,
+            GROUP_CONCAT(DISTINCT v.violation_type SEPARATOR ', ') as violationTypes
+        FROM violations v
+        WHERE v.created_at >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        <if test="location != null and location != ''">
+            AND v.location LIKE CONCAT('%', #{location}, '%')
+        </if>
+        GROUP BY v.location, v.park_name
+        ORDER BY count DESC
+    </select>
+
+    <!-- 5. 重复违规车辆预警 -->
+    <select id="selectRepeatViolators" resultType="map">
+        SELECT 
+            v.plate_number as plateNumber,
+            v.park_name as parkName,
+            COUNT(*) as totalCount,
+            COUNT(DISTINCT v.violation_type) as typeCount,
+            GROUP_CONCAT(DISTINCT v.violation_type SEPARATOR ', ') as violationTypes,
+            MAX(v.created_at) as lastViolationTime,
+            MIN(v.created_at) as firstViolationTime,
+            DATEDIFF(MAX(v.created_at), MIN(v.created_at)) as daySpan
+        FROM violations v
+        WHERE v.created_at >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        GROUP BY v.plate_number, v.park_name
+        HAVING COUNT(*) >= #{threshold}
+        ORDER BY totalCount DESC
+    </select>
+
+</mapper>

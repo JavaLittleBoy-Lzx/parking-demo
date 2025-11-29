@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.AreaMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Area">
+        <id column="id" property="id" />
+        <result column="province" property="province" />
+        <result column="city" property="city" />
+        <result column="district" property="district" />
+        <result column="community" property="community" />
+        <result column="building" property="building" />
+        <result column="units" property="units" />
+        <result column="floor" property="floor" />
+        <result column="openid" property="openid" />
+        <result column="username" property="username" />
+        <result column="usercode" property="usercode" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, province, city, district, community, building,units,floor, openid, username,usercode
+    </sql>
+    <insert id="insertArea">
+        insert into area (province, city, district, community, building,units,floor, openid, username,usercode)
+        select province, city, district, community, building,units,floor, #{openid}, #{username},#{usercode}
+        from community  where id in
+        <foreach collection="arrayId" open="(" close=")" separator="," item="item" index="index">
+            #{item}
+        </foreach>
+    </insert>
+    <delete id="deleteByOpenid">
+        delete from area where openid=#{openid}
+    </delete>
+    <delete id="deleteArea">
+        delete from area where province=#{province}
+        and city=#{city}
+        and district=#{district}
+        and community=#{community}
+        and usercode=#{usercode}
+    </delete>
+    <select id="getTransmitByOpenId" resultType="com.parkingmanage.entity.Area">
+        select DISTINCT username,openid from area
+        where province=#{province}
+        and city=#{city}
+        and district=#{district}
+        and community=#{community}
+        and openid!=#{openid}
+
+    </select>
+    <select id="getParkingInfo" resultType="com.parkingmanage.entity.Area">
+        select * from area
+        where province=#{province} and city=#{city} and district=#{district}
+        and community=#{community} and building=#{building} LIMIT 1
+    </select>
+    <select id="getByOpenId" resultType="com.parkingmanage.entity.Area">
+        select * from area  where openid=#{openid} LIMIT 1
+    </select>
+    <select id="getAreaByOpenId" resultType="com.parkingmanage.vo.AreaResult">
+        select DISTINCT a.province,a.city,a.district,a.community,a.building,a.units,a.floor,b.roomnumber from area a,community b
+        where openid=#{openid} and a.province=b.province and a.city=b.city and a.district=b.district and
+         a.community=b.community and a.building=b.building and a.units=b.units and a.floor=b.floor
+        union
+        select DISTINCT a.province,a.city,a.district,a.community,a.building,a.units,a.floor,b.roomnumber from areatransmit a,community b
+        where openid=#{openid} and a.province=b.province and a.city=b.city and a.district=b.district and  a.community=b.community and a.building=b.building and a.units=b.units and a.floor=b.floor and
+        date_format(CURRENT_DATE() ,'%Y-%m-%d %H:%i') &lt;= date_format(enddate ,'%Y-%m-%d %H:%i') and
+        date_format(CURRENT_DATE() ,'%Y-%m-%d %H:%i') >= date_format(begindate ,'%Y-%m-%d %H:%i')
+        order by province,city,district,community,building,units,floor
+
+    </select>
+
+</mapper>

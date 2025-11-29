@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.NotifierInfoMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.NotifierInfo">
+        <id column="id" property="id" />
+        <result column="merchant_name" property="merchantName" />
+        <result column="notifier_name" property="notifierName" />
+        <result column="notifier_no" property="notifierNo" />
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, merchant_name, notifier_name, notifiter_no
+    </sql>
+    <select id="duplicate" resultType="java.lang.Integer">
+        select count(*) from notifier_info  where merchant_name=#{merchantName}  and notifier_name=#{notifierName} and notifier_no=#{notifierNo}
+        <if test="id!=null and id !=''">
+            and id &lt;&gt;#{id}
+        </if>
+    </select>
+    <select id="merchantNameList" resultType="com.parkingmanage.entity.NotifierInfo">
+         select distinct merchant_name from notifier_info where deleted = 0  order by merchant_name
+    </select>
+    <select id="notifierNameList" resultType="com.parkingmanage.entity.NotifierInfo">
+         select distinct notifier_name from notifier_info where merchant_name=#{merchant_name}  and deleted = 0 order by notifier_name
+    </select>
+
+</mapper>

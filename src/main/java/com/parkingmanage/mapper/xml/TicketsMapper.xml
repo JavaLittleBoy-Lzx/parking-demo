@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.TicketsMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Tickets">
+        <id column="id" property="id" />
+        <result column="gateid" property="gateid" />
+        <result column="building" property="building" />
+        <result column="createdate" property="createdate" />
+        <result column="createman" property="createman" />
+        <result column="ticketcode" property="ticketcode" />
+        <result column="ticketname" property="ticketname" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, gateid, building, createdate, createman, ticketcode, ticketname
+    </sql>
+    <insert id="insertTickets">
+        <foreach collection="arrayId"   item="item" index="index">
+        insert into tickets (gateid, building, createdate, createman, ticketcode,ticketname)
+        value ( #{gateid},  #{item}, now() ,#{createman}, #{ticketcode},#{ticketname} );
+        </foreach>
+    </insert>
+    <delete id="deleteByGateId">
+        delete from tickets where gateid=#{gateid}
+    </delete>
+    <select id="getManageBuilding" resultType="com.parkingmanage.entity.Tickets">
+        select building, ticketcode,ticketname from tickets where gateid=#{gateid}
+    </select>
+
+</mapper>

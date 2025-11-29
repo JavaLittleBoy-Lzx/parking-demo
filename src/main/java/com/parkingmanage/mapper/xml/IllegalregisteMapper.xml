@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.IllegalregisteMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Illegalregiste">
+        <id column="id" property="id" />
+        <result column="province" property="province" />
+        <result column="city" property="city" />
+        <result column="district" property="district" />
+        <result column="community" property="community" />
+        <result column="building" property="building" />
+        <result column="units" property="units" />
+        <result column="cartype" property="cartype" />
+        <result column="plateNumber" property="platenumber" />
+        <result column="location" property="location" />
+        <result column="openid" property="openid" />
+        <result column="operatorcode" property="operatorcode" />
+        <result column="operatordate" property="operatordate" />
+        <result column="imgurl" property="imgurl" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, province, city, district, community, cartype, plateNumber, location, openid, operatorcode, operatordate, imgurl
+        ,building,units
+    </sql>
+    <select id="allManage" resultType="com.parkingmanage.entity.Illegalregiste">
+        select a.* from Illegalregiste a where 1=1
+        <if test="community!=null and community !=''">
+            and a.community like concat('%',#{community},'%')
+        </if>
+        <if test="plateNumber!=null and plateNumber !=''">
+            and a.plateNumber like concat('%',#{plateNumber},'%')
+        </if>
+        <if test="operatordate!=null and operatordate !=''">
+            and date_format(#{operatordate} ,'%Y-%m-%d') = date_format(a.operatordate ,'%Y-%m-%d')
+        </if>
+
+        ORDER BY a.province,a.city,a.district,a.community,a.building,a.units,a.operatordate
+    </select>
+
+</mapper>

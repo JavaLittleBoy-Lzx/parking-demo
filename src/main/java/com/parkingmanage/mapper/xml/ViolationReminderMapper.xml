@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ViolationReminderMapper">
+
+    <!-- 违规记录与提醒发送关联分析 -->
+    <select id="selectCorrelationAnalysis" resultType="map">
+        SELECT 
+            DATE_FORMAT(v.created_at, '%Y-%m-%d') as date,
+            v.park_name as parkName,
+            COUNT(DISTINCT v.id) as violationCount,
+            COUNT(DISTINCT vr.id) as reminderCount,
+            ROUND(
+                CASE 
+                    WHEN COUNT(DISTINCT v.id) = 0 THEN 0
+                    ELSE COUNT(DISTINCT vr.id) * 100.0 / COUNT(DISTINCT v.id)
+                END, 
+                2
+            ) as reminderRate
+        FROM violations v
+        LEFT JOIN violation_reminders vr ON v.plate_number COLLATE utf8mb4_unicode_ci = vr.plate_number COLLATE utf8mb4_unicode_ci
+            AND DATE(v.created_at) = DATE(vr.create_time)
+        WHERE v.created_at >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        GROUP BY DATE_FORMAT(v.created_at, '%Y-%m-%d'), v.park_name
+        HAVING violationCount > 0
+        ORDER BY date ASC, parkName ASC
+        LIMIT 30
+    </select>
+
+</mapper>
+
