@@ -34,6 +34,7 @@ public class AcmsVipController {
     private AcmsVipService acmsVipService;
 
     /**
+     * 测试
      * 获取车主信息
      * 对应ACMS接口：GET_CUSTOMER (4.6)
      * 
