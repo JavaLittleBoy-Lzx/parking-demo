@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ScrapMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Scrap">
+        <id column="scrap_id" property="scrapId" />
+        <result column="department_id" property="departmentId" />
+        <result column="device_id" property="deviceId" />
+        <result column="device_code" property="deviceCode" />
+        <result column="device_name" property="deviceName" />
+        <result column="scrap_date" property="scrapDate" />
+        <result column="scrap_reason" property="scrapReason" />
+        <result column="registration_user_id" property="registrationUserId" />
+        <result column="audius_user_id" property="audiusUserId" />
+        <result column="approval_time" property="approvalTime" />
+        <result column="device_status" property="deviceStatus" />
+        <result column="remarks" property="remarks" />
+        <result column="deleted" property="deleted" />
+        <result column="audius_reason" property="audiusReason" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        scrap_id, department_id, device_id, device_code, device_name, scrap_date, scrap_reason, registration_user_id, audius_user_id, approval_time, device_status, remarks, deleted,audius_reason
+    </sql>
+
+</mapper>

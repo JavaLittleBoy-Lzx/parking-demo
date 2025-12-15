@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ChannelInfoMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.ChannelInfo">
+        <id column="id" property="id" />
+        <result column="park_code" property="parkCode" />
+        <result column="channel_id" property="channelId" />
+        <result column="channel_name" property="channelName" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, park_code, channel_id, channel_name
+    </sql>
+
+    <select id="getChannelNameList" resultType="com.parkingmanage.entity.ChannelInfo">
+        select distinct  channel_name
+        from channel_info
+        where park_code = #{yardCode}
+        order by channel_name;
+    </select>
+    <select id="getChannelNameById" resultType="com.parkingmanage.entity.ChannelInfo">
+        select  channel_name
+        from channel_info
+        where park_code = #{parkCode} and channel_id = #{channelId};
+    </select>
+    <select id="channelByName" resultType="com.parkingmanage.entity.ChannelInfo">
+        select  *
+        from channel_info
+        where channel_name = #{entranceName};
+    </select>
+    <select id="channelNameByParkCode" resultType="java.lang.String">
+        select  channel_name
+        from channel_info
+        where park_code = #{enterChannelCustomCode};
+    </select>
+    <select id="getByChnnelId" resultType="java.lang.String">
+        select  channel_name
+        from channel_info
+        where channel_id = #{enterChannelId};
+    </select>
+
+
+</mapper>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.UserMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.User">
+        <id column="user_id" property="userId" />
+        <result column="login_name" property="loginName" />
+        <result column="user_name" property="userName" />
+        <result column="password" property="password" />
+        <result column="telephone" property="telephone" />
+        <result column="department_id" property="departmentId" />
+        <result column="role_id" property="roleId" />
+        <result column="deleted" property="deleted" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        user_id, login_name, user_name, password, telephone, department_id, role_id, deleted
+    </sql>
+    <select id="selectByUserName" resultType="com.parkingmanage.entity.User">
+        select * from user where login_name =#{loginName}
+    </select>
+
+</mapper>

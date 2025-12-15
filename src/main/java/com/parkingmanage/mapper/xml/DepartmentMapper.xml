@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.DepartmentMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Department">
+        <id column="department_id" property="departmentId" />
+        <result column="department_name" property="departmentName" />
+        <result column="department_address" property="departmentAddress" />
+        <result column="leader" property="leader" />
+        <result column="leader_phone" property="leaderPhone" />
+        <result column="deleted" property="deleted" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        department_id, department_name, department_address, leader, leader_phone, deleted
+    </sql>
+
+</mapper>

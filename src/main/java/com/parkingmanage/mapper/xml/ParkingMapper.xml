@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ParkingMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Parking">
+        <id column="id" property="id" />
+        <result column="province" property="province" />
+        <result column="city" property="city" />
+        <result column="district" property="district" />
+        <result column="community" property="community" />
+        <result column="parking" property="parking" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        province, city, district, community, id, parking
+    </sql>
+    <select id="getList" resultType="com.parkingmanage.entity.Parking">
+        select  a.* from parking a where 1=1
+        <if test="province!=null and province !=''">
+            and a.province=#{province}
+        </if>
+        <if test="city!=null and city !=''">
+            and a.city=#{city}
+        </if>
+        <if test="district!=null and district !=''">
+            and a.district=#{district}
+        </if>
+        <if test="community!=null and community !=''">
+            and a.community=#{community}
+        </if>
+        ORDER BY a.province,a.city,a.district,a.community,a.parking
+    </select>
+
+
+</mapper>

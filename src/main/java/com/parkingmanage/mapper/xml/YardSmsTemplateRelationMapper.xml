@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.YardSmsTemplateRelationMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.YardSmsTemplateRelation">
+        <id column="id" property="id" />
+        <result column="yard_id" property="yardId" />
+        <result column="sms_template_id" property="smsTemplateId" />
+        <result column="template_usage" property="templateUsage" />
+        <result column="is_default" property="isDefault" />
+        <result column="deleted" property="deleted" />
+        <result column="gmt_create" property="gmtCreate" />
+        <result column="gmt_modified" property="gmtModified" />
+    </resultMap>
+
+    <!-- 根据车场ID查询关联的模板ID列表 -->
+    <select id="selectTemplateIdsByYardId" resultType="java.lang.Integer">
+        SELECT sms_template_id 
+        FROM yard_sms_template_relation
+        WHERE yard_id = #{yardId}
+        AND deleted = 0
+        ORDER BY is_default DESC, gmt_create ASC
+    </select>
+
+    <!-- 删除车场的所有模板关联（逻辑删除） -->
+    <update id="deleteByYardId">
+        UPDATE yard_sms_template_relation
+        SET deleted = 1, gmt_modified = NOW()
+        WHERE yard_id = #{yardId}
+        AND deleted = 0
+    </update>
+
+    <!-- 批量插入关联关系，如果存在则更新 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO yard_sms_template_relation 
+        (yard_id, sms_template_id, template_usage, is_default, deleted, gmt_create)
+        VALUES
+        <foreach collection="relations" item="item" separator=",">
+            (#{item.yardId}, #{item.smsTemplateId}, #{item.templateUsage}, #{item.isDefault}, 0, NOW())
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            template_usage = VALUES(template_usage),
+            is_default = VALUES(is_default),
+            deleted = 0,
+            gmt_modified = NOW()
+    </insert>
+
+</mapper>
+

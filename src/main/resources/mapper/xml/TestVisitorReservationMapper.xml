@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.TestVisitorReservationMapper">
+
+    <!-- 根据创建时间范围分页查询 -->
+    <select id="selectByCreateTimeRange" resultType="com.parkingmanage.entity.TestVisitorReservation">
+        SELECT
+            id,
+            user_id,
+            gateway_transit_begin_time,
+            gateway_transit_end_time,
+            begin_time,
+            end_time,
+            apply_from_name,
+            apply_from,
+            form_id,
+            form_name,
+            visitor_id_card,
+            visitor_user_name,
+            visitor_phone_no,
+            pass_name,
+            apply_state,
+            apply_state_name,
+            use_status_id,
+            phone_no,
+            pass_no,
+            pass_dep,
+            companions_num,
+            code_str,
+            foreign_user_no,
+            auth_state,
+            auth_state_str,
+            approval_flow_id,
+            submit_id,
+            task_id,
+            visitor_plate_number,
+            custom_vip_name,
+            bz,
+            bz2,
+            bz3,
+            ct_date
+        FROM test_visitor_reservation
+        <where>
+            <if test="startTime != null and startTime != ''">
+                AND (ct_date &gt;= #{startTime} OR ct_date IS NULL)
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND (ct_date &lt;= #{endTime} OR ct_date IS NULL)
+            </if>
+        </where>
+        ORDER BY ct_date DESC
+        <if test="pageNum != null and pageSize != null">
+            LIMIT #{pageNum}, #{pageSize}
+        </if>
+    </select>
+
+    <!-- 统计时间范围内的记录数量 -->
+    <select id="countByCreateTimeRange" resultType="int">
+        SELECT COUNT(*)
+        FROM test_visitor_reservation
+        <where>
+            <if test="startTime != null and startTime != ''">
+                AND (ct_date &gt;= #{startTime} OR ct_date IS NULL)
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND (ct_date &lt;= #{endTime} OR ct_date IS NULL)
+            </if>
+        </where>
+    </select>
+
+</mapper>
+

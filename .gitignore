@@ -1,0 +1,29 @@
+# Maven build output
+target/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Log files
+*.log
+*.log.*
+*.gz
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Sensitive files
+*.jks
+application-prod.yml
+
+# Upload files (keep structure but ignore content)
+uploads/violation-photos/
+uploads/avatars/
+
+# Python cache
+__pycache__/
+*.pyc

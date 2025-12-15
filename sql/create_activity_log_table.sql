@@ -1,0 +1,26 @@
+-- 创建活动日志表
+CREATE TABLE `activity_log` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` varchar(50) NOT NULL COMMENT '用户ID',
+  `username` varchar(100) DEFAULT NULL COMMENT '用户名',
+  `module` varchar(50) NOT NULL COMMENT '操作模块',
+  `action` varchar(50) NOT NULL COMMENT '操作动作',
+  `description` varchar(500) DEFAULT NULL COMMENT '操作描述',
+  `target_id` varchar(50) DEFAULT NULL COMMENT '操作对象ID',
+  `target_type` varchar(50) DEFAULT NULL COMMENT '操作对象类型',
+  `old_data` text COMMENT '操作前数据',
+  `new_data` text COMMENT '操作后数据',
+  `ip_address` varchar(50) DEFAULT NULL COMMENT 'IP地址',
+  `user_agent` varchar(500) DEFAULT NULL COMMENT '浏览器信息',
+  `status` varchar(20) DEFAULT 'success' COMMENT '操作状态：success-成功，failed-失败',
+  `error_message` text COMMENT '错误信息',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  `duration` bigint(20) DEFAULT NULL COMMENT '操作耗时(毫秒)',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_module` (`module`),
+  KEY `idx_action` (`action`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动日志表';

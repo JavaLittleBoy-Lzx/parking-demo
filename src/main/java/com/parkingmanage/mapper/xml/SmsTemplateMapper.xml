@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.SmsTemplateMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.SmsTemplate">
+        <id column="id" property="id" />
+        <result column="template_name" property="templateName" />
+        <result column="sign_name" property="signName" />
+        <result column="template_code" property="templateCode" />
+        <result column="template_type" property="templateType" />
+        <result column="description" property="description" />
+        <result column="deleted" property="deleted" />
+        <result column="gmt_create" property="gmtCreate" />
+        <result column="gmt_modified" property="gmtModified" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, template_name, sign_name, template_code, template_type, description, deleted, gmt_create, gmt_modified
+    </sql>
+
+    <!-- 检查模板CODE是否重复 -->
+    <select id="checkDuplicateTemplateCode" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM sms_template
+        WHERE template_code = #{templateCode}
+        AND deleted = 0
+        <if test="id != null">
+            AND id != #{id}
+        </if>
+    </select>
+
+    <!-- 根据模板类型查询 -->
+    <select id="selectByTemplateType" resultType="com.parkingmanage.entity.SmsTemplate">
+        SELECT <include refid="Base_Column_List" />
+        FROM sms_template
+        WHERE template_type = #{templateType}
+        AND deleted = 0
+        ORDER BY gmt_create DESC
+    </select>
+
+    <!-- 根据模板名称模糊查询 -->
+    <select id="selectByTemplateName" resultType="com.parkingmanage.entity.SmsTemplate">
+        SELECT <include refid="Base_Column_List" />
+        FROM sms_template
+        WHERE template_name LIKE CONCAT('%', #{templateName}, '%')
+        AND deleted = 0
+        ORDER BY gmt_create DESC
+    </select>
+
+</mapper>
+

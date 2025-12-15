@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.AppointmentMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Appointment">
+        <id column="id" property="id"/>
+        <result column="province" property="province"/>
+        <result column="city" property="city"/>
+        <result column="district" property="district"/>
+        <result column="community" property="community"/>
+        <result column="visitdate" property="visitdate"/>
+        <result column="recorddate" property="recorddate"/>
+        <result column="visitorphone" property="visitorphone"/>
+        <result column="cartype" property="cartype"/>
+        <result column="plateNumber" property="platenumber"/>
+        <result column="status" property="status"/>
+        <result column="openid" property="openid"/>
+        <result column="building" property="building"/>
+        <result column="units" property="units"/>
+        <result column="floor" property="floor"/>
+        <result column="room" property="room"/>
+        <result column="owneropenid" property="owneropenid"/>
+        <result column="ownername" property="ownername"/>
+        <result column="ownerphone" property="ownerphone"/>
+        <result column="visitreason" property="visitreason"/>
+        <result column="appointtype" property="appointtype"/>
+        <result column="auditstatus" property="auditstatus"/>
+        <result column="refusereason" property="refusereason"/>
+        <result column="parking" property="parking"/>
+        <result column="auditopenid" property="auditopenid"/>
+        <result column="auditusername" property="auditusername"/>
+        <result column="auditdate" property="auditdate"/>
+        <!-- 🆕 新增visitorname字段映射 -->
+        <result column="visitorname" property="visitorname"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, province, city, district, community, visitdate, recorddate, visitorphone,cartype, plateNumber, status,
+        openid,building,
+        units,floor,room,owneropenid,ownername,ownerphone,visitreason,appointtype,auditstatus,refusereason,venuestatus
+        ,arrivedate,leavedate,parking,auditopenid,auditusername,auditdate,visitorname
+    </sql>
+    <update id="updateByCarNumber">
+        update appointment set arrivedate = #{enterTime},venuestatus = '已入场' where plateNumber = #{enterCarLicenseNumber}
+        and venuestatus = '待入场';
+    </update>
+    <update id="updateLeaveTimeByCarNumber">
+        update appointment set arrivedate = #{enterTime},leavedate = #{leaveTime},venuestatus = '已离场'  where plateNumber = #{enterCarLicenseNumber}
+        and venuestatus = '已入场' OR venuestatus = '已进场';
+    </update>
+    <select id="selectAppointmentByOrderNumber" resultType="com.parkingmanage.entity.Appointment">
+        select a.*
+        from appointment a
+        where a.owneropenid=#{owneropenid}
+    </select>
+    <select id="visitorList" resultType="com.parkingmanage.entity.Appointment">
+        select a.*
+        from appointment a
+        where a.openid=#{openid}
+        order by a.recorddate desc
+    </select>
+    <select id="managerList" resultType="com.parkingmanage.entity.Appointment">
+        SELECT * FROM (
+        SELECT a.* FROM appointment a,area b WHERE a.province=b.province AND a.city=b.city AND a.district=b.district AND
+        a.community=b.community AND a.building=b.building AND a.units=b.units AND a.floor=b.floor AND b.openid=#{openid}
+        UNION
+        SELECT a.* FROM appointment a,areatransmit b WHERE a.province=b.province AND a.city=b.city AND
+        a.district=b.district AND
+        a.community=b.community AND a.building=b.building AND a.units=b.units AND a.floor=b.floor AND
+        date_format(CURRENT_DATE() ,'%Y-%m-%d %H:%i:%s %H:%i') &lt;= date_format(b.enddate ,'%Y-%m-%d %H:%i:%s %H:%i') AND
+        date_format(CURRENT_DATE() ,'%Y-%m-%d %H:%i:%s %H:%i') >= date_format(b.begindate ,'%Y-%m-%d %H:%i:%s %H:%i') AND
+        b.openid=#{openid}
+        ) AS combined_table
+        ORDER BY recorddate DESC;
+
+    </select>
+    <select id="vehicleQueryList" resultType="com.parkingmanage.entity.Appointment">
+        SELECT DISTINCT a.* FROM appointment a,area b where a.province=b.province and a.city=b.city and
+        a.district=b.district and
+        a.community=b.community and b.openid=#{openid} and
+        a.plateNumber like concat('%',#{platenumber},'%')
+        and a.venuestatus='已入场' and a.leavedate = #{leavedate} ORDER BY a.recorddate DESC
+    </select>
+    <select id="subAppointQueryList" resultType="com.parkingmanage.entity.Appointment">
+        SELECT DISTINCT a.* FROM appointment a,area b where a.province=b.province and a.city=b.city and
+        a.district=b.district and
+        a.appointtype='代人' and a.community=b.community and a.openid=#{openid} and
+        a.plateNumber like concat('%',#{platenumber},'%') and
+        a.visitorphone like concat('%',#{visitorphone},'%') AND a.visitdate BETWEEN #{visitdateBegin} AND #{visitdateEnd}  AND a.recorddate BETWEEN #{recorddateBegin}  AND #{recorddateEnd}
+        ORDER BY a.recorddate DESC
+
+    </select>
+    <select id="auditQueryList" resultType="com.parkingmanage.entity.Appointment">
+        SELECT DISTINCT a.*, c.username,
+        CASE
+        WHEN a.venuestatus = '已入场' THEN
+        CONCAT(
+        IF(TIMESTAMPDIFF(DAY, a.arrivedate, NOW()) > 0, CONCAT(TIMESTAMPDIFF(DAY, a.arrivedate, NOW()), '天'), ''),
+        IF(TIMESTAMPDIFF(HOUR, a.arrivedate, NOW()) % 24 > 0, CONCAT(TIMESTAMPDIFF(HOUR, a.arrivedate, NOW()) % 24, '小时'), ''),
+        IF(TIMESTAMPDIFF(MINUTE, a.arrivedate, NOW()) % 60 > 0, CONCAT(TIMESTAMPDIFF(MINUTE, a.arrivedate, NOW()) % 60, '分钟'), ''),
+        IF(TIMESTAMPDIFF(SECOND, a.arrivedate, NOW()) % 60 > 0, CONCAT(TIMESTAMPDIFF(SECOND, a.arrivedate, NOW()) % 60, '秒'), '')
+        )
+        WHEN a.venuestatus = '已离场' THEN
+        CONCAT(
+        IF(TIMESTAMPDIFF(DAY, a.arrivedate, a.leavedate) > 0, CONCAT(TIMESTAMPDIFF(DAY, a.arrivedate, a.leavedate), '天'), ''),
+        IF(TIMESTAMPDIFF(HOUR, a.arrivedate,a.leavedate) % 24 > 0, CONCAT(TIMESTAMPDIFF(HOUR, a.arrivedate, a.leavedate) % 24, '小时'), ''),
+        IF(TIMESTAMPDIFF(MINUTE, a.arrivedate,a.leavedate) % 60 > 0, CONCAT(TIMESTAMPDIFF(MINUTE, a.arrivedate, a.leavedate) % 60, '分钟'), ''),
+        IF(TIMESTAMPDIFF(SECOND, a.arrivedate,a.leavedate) % 60 > 0, CONCAT(TIMESTAMPDIFF(SECOND, a.arrivedate, a.leavedate) % 60, '秒'), '')
+        )
+        END AS parking_duration
+        FROM appointment a
+        JOIN area b ON a.province = b.province AND a.city = b.city AND a.district = b.district AND a.community = b.community AND b.openid = #{openid}
+        JOIN butler c ON a.auditopenid = c.openid
+        WHERE a.auditstatus != '待审批' AND a.auditstatus != '未通过'
+        AND a.building = b.building AND a.units = a.units AND a.floor = b.floor
+        AND a.plateNumber LIKE CONCAT('%', #{platenumber}, '%') AND a.visitorphone LIKE CONCAT('%', #{visitorphone}, '%')
+        AND a.visitdate BETWEEN #{visitdateBegin} AND #{visitdateEnd} AND a.recorddate BETWEEN #{recorddateBegin} AND #{recorddateEnd}
+        ORDER BY a.recorddate DESC;
+    </select>
+    <select id="allpage" resultType="com.parkingmanage.entity.Appointment">
+        select a.* from appointment a where 1=1
+        <if test="auditstatus!=null and auditstatus !=''">
+            and a.auditstatus=#{auditstatus}
+        </if>
+        <if test="community!=null and community !=''">
+            and a.community like concat('%',#{community},'%')
+        </if>
+        <if test="plateNumber!=null and plateNumber !=''">
+            and a.plateNumber like concat('%',#{plateNumber},'%')
+        </if>
+        <if test="visitdate!=null and visitdate !=''">
+            and date_format(#{visitdate} ,'%Y-%m-%d %H:%i:%s') = date_format(a.visitdate ,'%Y-%m-%d %H:%i:%s')
+        </if>
+
+        ORDER BY a.province,a.city,a.district,a.community,a.building,a.units,a.visitdate
+    </select>
+    <select id="venuepage" resultType="com.parkingmanage.entity.Appointment">
+        select a.* from appointment a where 1=1
+        <if test="venuestatus!=null and venuestatus !=''">
+            and a.venuestatus=#{venuestatus}
+        </if>
+        <if test="community!=null and community !=''">
+            and a.community like concat('%',#{community},'%')
+        </if>
+        <if test="plateNumber!=null and plateNumber !=''">
+            and a.plateNumber like concat('%',#{plateNumber},'%')
+        </if>
+        <if test="arrivedate!=null and arrivedate !=''">
+            and date_format(#{arrivedate} ,'%Y-%m-%d %H:%i:%s') = date_format(a.arrivedate ,'%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="leavedate!=null and leavedate !=''">
+            and date_format(#{leavedate} ,'%Y-%m-%d %H:%i:%s') = date_format(a.leavedate ,'%Y-%m-%d %H:%i:%s')
+        </if>
+        ORDER BY a.province,a.city,a.district,a.community,a.building,a.units,a.arrivedate
+    </select>
+    <select id="listAppointNoAudit" resultType="com.parkingmanage.entity.Appointment">
+        SELECT a.* FROM appointment a where a.auditstatus="待审批"
+        <if test="community!=null and community !=''">
+            and a.community like concat('%',#{community},'%')
+        </if>
+        <if test="ownername!=null and ownername !=''">
+            and a.ownername like concat('%',#{ownername},'%')
+        </if>
+        <if test="recorddate!=null and recorddate !=''">
+            and date_format(#{recorddate} ,'%Y-%m-%d %H:%i:%s') = date_format(a.recorddate ,'%Y-%m-%d %H:%i:%s')
+        </if>
+        ORDER BY a.province,a.city,a.district,a.community,a.building,a.units,a.visitdate
+    </select>
+    <select id="getByQuery" resultType="com.parkingmanage.entity.Appointment">
+        select * from appointment where auditstatus IN ("已通过","不审核") AND
+        plateNumber = #{enterCarLicenseNumber} AND TIMESTAMPDIFF(HOUR, NOW(), recorddate) &lt;= 24;
+    </select>
+    <select id="getAppointmentPlateNumber" resultType="com.parkingmanage.entity.Appointment">
+        SELECT * FROM appointment WHERE platenumber LIKE CONCAT('%', #{plateNumber}, '%')
+        AND venuestatus IN ('已入场')
+        ORDER BY recorddate DESC
+        LIMIT 200;
+    </select>
+    <select id="subAppointQueryListDuration" resultType="com.parkingmanage.entity.Appointment">
+
+    </select>
+    
+    <select id="listByPhone" resultType="com.parkingmanage.entity.Appointment">
+        SELECT a.* FROM appointment a
+        WHERE (a.visitorphone = #{phone} OR a.ownerphone = #{phone})
+        ORDER BY a.recorddate DESC
+    </select>
+
+    <select id="listByAddress" resultType="com.parkingmanage.entity.Appointment">
+        SELECT a.* FROM appointment a
+        WHERE 1=1
+        <if test="community != null and community != ''">
+            AND a.community = #{community}
+        </if>
+        <if test="building != null and building != ''">
+            AND a.building = #{building}
+        </if>
+        <if test="units != null and units != ''">
+            AND a.units = #{units}
+        </if>
+        <if test="floor != null and floor != ''">
+            AND a.floor = #{floor}
+        </if>
+        <if test="room != null and room != ''">
+            AND a.room = #{room}
+        </if>
+        ORDER BY a.recorddate DESC
+    </select>
+    <select id="getByQueryInfo" resultType="com.parkingmanage.entity.Appointment">
+        SELECT * FROM appointment WHERE auditstatus IN ("已通过","不审核") AND
+        plateNumber = #{enterCarLicenseNumber} AND community = #{yardName} and  TIMESTAMPDIFF(HOUR, NOW(), recorddate) &lt;= 24;
+    </select>
+
+    <!-- 🆕 根据预约记录ID更新访客微信姓名 -->
+    <update id="updateVisitorNameByAppointment">
+        UPDATE appointment 
+        SET visitorname = #{visitorName} 
+        WHERE id = #{appointmentId}
+    </update>
+    
+    <!-- 🆕 根据手机号更新最新的预约记录的访客姓名 -->
+    <update id="updateVisitorNameByPhone">
+        UPDATE appointment 
+        SET visitorname = #{visitorName} 
+        WHERE visitorphone = #{visitorPhone} 
+        AND id = (
+            SELECT max_id FROM (
+                SELECT MAX(id) as max_id 
+                FROM appointment 
+                WHERE visitorphone = #{visitorPhone}
+            ) tmp
+        )
+    </update>
+    
+    <!-- 🆕 根据openid更新最新的预约记录的访客姓名 -->
+    <update id="updateVisitorNameByOpenid">
+        UPDATE appointment 
+        SET visitorname = #{visitorName} 
+        WHERE openid = #{openid} 
+        AND id = (
+            SELECT max_id FROM (
+                SELECT MAX(id) as max_id 
+                FROM appointment 
+                WHERE openid = #{openid}
+            ) tmp
+        )
+    </update>
+
+    <!-- 🆕 查询即将超时的车辆（还剩15分钟到达2小时） -->
+    <select id="getAlmostTimeoutAppointments" resultMap="BaseResultMap">
+        SELECT 
+            <include refid="Base_Column_List"/>
+        FROM appointment
+        WHERE venuestatus = '已进场'
+        AND arrivedate IS NOT NULL
+        AND leavedate IS NULL
+        AND TIMESTAMPDIFF(MINUTE, arrivedate, NOW()) BETWEEN 105 AND 119
+        <!-- 105分钟 = 1小时45分钟（还剩15分钟到2小时），119分钟 = 1小时59分钟（还剩1分钟到2小时） -->
+        ORDER BY arrivedate ASC
+    </select>
+
+</mapper>

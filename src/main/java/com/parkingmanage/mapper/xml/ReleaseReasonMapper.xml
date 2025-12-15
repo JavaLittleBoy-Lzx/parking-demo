@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ReleaseReasonMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.ReleaseReason">
+        <id column="id" property="id" />
+        <result column="release_reason" property="releaseReason" />
+        <result column="release_no" property="releaseNo" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, release_reason, release_no
+    </sql>
+    <select id="duplicate" resultType="java.lang.Integer">
+        select count(*) from release_reason  where release_reason=#{releaseReason}  and release_no=#{releaseNo}
+        <if test="id!=null and id !=''">
+            and id &lt;&gt;#{id}
+        </if>
+    </select>
+    <select id="releaseReasonList" resultType="com.parkingmanage.entity.ReleaseReason">
+        select distinct release_reason from release_reason order by release_reason
+    </select>
+
+</mapper>

@@ -1,0 +1,70 @@
+# ======================
+# IDE & Editor
+# ======================
+.idea/
+!.idea/.gitignore
+!.idea/misc.xml
+!.idea/modules.xml
+!.idea/vcs.xml
+*.iml
+*.iws
+
+# ======================
+# Build Directories
+# ======================
+target/
+out/
+build/
+# Config with secrets (if local override)
+application.yml
+# ======================
+# Logs & Temporary Files
+# ======================
+*.log
+*.log.*
+*.gz
+*.tmp
+.DS_Store
+Thumbs.db
+
+# ======================
+# Databases & Uploads (Local Data)
+# ======================
+database/
+uploads/
+.augment/
+*.db
+*.sqlite
+
+# ======================
+# Security Sensitive Files (NEVER COMMIT!)
+# ======================
+*.jks
+*.p12
+*.keystore
+*.crt
+*.key
+.env
+.env.local
+application-local.yml
+application-dev.yml
+# 如果有密钥、密码配置文件，请明确排除
+secrets/
+config/*.properties
+config/*.yml
+
+# ======================
+# Python Scripts (if not core logic)
+# ======================
+*.py
+*.md
+!docs/                     # 如果 docs 是文档目录且需版本控制，可保留
+!README.md
+!room_data_import.sql      # 如果某些 SQL 是初始化脚本，显式保留
+
+# ======================
+# OS & Misc
+# ======================
+.vscode/
+*.swp
+*~

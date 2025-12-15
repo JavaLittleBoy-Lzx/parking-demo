@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.MemberMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Member">
+        <id column="id" property="id" />
+        <result column="memberno" property="memberno" />
+        <result column="nickname" property="nickname" />
+        <result column="avatarurl" property="avatarurl" />
+        <result column="applydate" property="applydate" />
+        <result column="userphone" property="userphone" />
+
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, memberno,avatarurl,nickname,applydate,userphone
+    </sql>
+    <select id="selectMemberByOpenId" resultType="com.parkingmanage.entity.Member">
+        select a.*
+        from member a
+        where a.memberno=#{openid}
+    </select>
+
+</mapper>

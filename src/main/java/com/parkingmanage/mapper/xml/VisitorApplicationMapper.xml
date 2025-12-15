@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.VisitorApplicationMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.VisitorApplication">
+        <id column="id" property="id" />
+        <result column="application_no" property="applicationNo" />
+        <result column="nickname" property="nickname" />
+        <result column="phone" property="phone" />
+        <result column="gender" property="gender" />
+        <result column="id_card" property="idCard" />
+        <result column="reason" property="reason" />
+        <result column="province" property="province" />
+        <result column="city" property="city" />
+        <result column="district" property="district" />
+        <result column="community" property="community" />
+        <result column="building" property="building" />
+        <result column="owner_name" property="ownerName" />
+        <result column="owner_phone" property="ownerPhone" />
+        <result column="units" property="units" />
+        <result column="floor" property="floor" />
+        <result column="roomnumber" property="roomnumber" />
+        <result column="full_address" property="fullAddress" />
+        <result column="userkind" property="userkind" />
+        <result column="auditstatus" property="auditstatus" />
+        <result column="applydate" property="applydate" />
+        <result column="auditusername" property="auditusername" />
+        <result column="auditdate" property="auditdate" />
+        <result column="refusereason" property="refusereason" />
+        <result column="openid" property="openid" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, application_no, nickname, phone, gender, id_card, reason,
+        province, city, district, community, building, units, floor, roomnumber,owner_name,owner_phone,
+        full_address, userkind, auditstatus, applydate, auditusername, auditdate,
+        refusereason, openid, create_time, update_time
+    </sql>
+
+    <!-- 根据条件查询访客申请列表 -->
+    <select id="queryListVisitorApplication" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM visitor_application
+        <where>
+            <if test="nickname != null and nickname != ''">
+                AND nickname LIKE CONCAT('%', #{nickname}, '%')
+            </if>
+            <if test="community != null and community != ''">
+                AND community LIKE CONCAT('%', #{community}, '%')
+            </if>
+            <if test="applydate != null and applydate != ''">
+                AND DATE(applydate) = #{applydate}
+            </if>
+        </where>
+        ORDER BY applydate DESC
+    </select>
+
+    <!-- 根据手机号查询访客申请 -->
+    <select id="getByPhone" parameterType="String" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM visitor_application
+        WHERE phone = #{phone}
+        ORDER BY applydate DESC
+        LIMIT 1
+    </select>
+
+    <!-- 根据申请编号查询访客申请 -->
+    <select id="getByApplicationNo" parameterType="String" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM visitor_application
+        WHERE application_no = #{applicationNo}
+    </select>
+
+    <!-- MyBatis Plus会自动提供insert方法，无需手动定义 -->
+
+    <!-- MyBatis Plus会自动提供updateById方法，无需手动定义 -->
+
+    <!-- MyBatis Plus会自动提供deleteById和selectById方法，无需手动定义 -->
+
+</mapper> 

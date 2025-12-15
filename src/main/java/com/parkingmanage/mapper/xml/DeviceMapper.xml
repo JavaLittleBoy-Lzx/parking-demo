@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.DeviceMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Device">
+        <id column="device_id" property="deviceId" />
+        <result column="purchase_id" property="purchaseId" />
+        <result column="device_name" property="deviceName" />
+        <result column="device_price" property="devicePrice" />
+        <result column="device_code" property="deviceCode" />
+        <result column="model" property="model" />
+        <result column="device_type" property="deviceType" />
+        <result column="technical_documentation" property="technicalDocumentation" />
+        <result column="deleted" property="deleted" />
+        <result column="department_id" property="departmentId" />
+        <result column="purchase_time" property="purchaseTime" />
+        <result column="device_status" property="deviceStatus" />
+        <result column="original_state" property="originalState" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+<!--    <sql id="Base_Column_List">-->
+<!--        device_id, purchase_id, device_name, device_price, device_code, model, device_type, technical_documentation, deleted, department_id, purchase_time, device_status,original_state-->
+<!--    </sql>-->
+
+</mapper>

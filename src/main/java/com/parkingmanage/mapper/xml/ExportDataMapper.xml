@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ExportDataMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.ExportData">
+        <id column="id" property="id" />
+        <result column="enter_car_license_number" property="enterCarLicenseNumber" />
+        <result column="notifier_name" property="notifierName" />
+        <result column="reserve_remark" property="reserveRemark" />
+        <result column="enter_time" property="enterTime" />
+        <result column="leave_time" property="leaveTime" />
+        <result column="parking_duration" property="parkingDuration" />
+        <result column="remark" property="remark" />
+        <result column="enter_channel_name" property="enterChannelName" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, enter_car_license_number, notifier_name, reserve_remark, enter_time, leave_time, parking_duration, remark, enter_channel_name
+    </sql>
+
+</mapper>

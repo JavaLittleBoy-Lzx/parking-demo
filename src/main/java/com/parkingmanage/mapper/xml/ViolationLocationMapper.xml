@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ViolationLocationMapper">
+
+    <!-- 基础结果映射 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.ViolationLocation">
+        <id column="id" property="id"/>
+        <result column="location_name" property="locationName"/>
+        <result column="park_name" property="parkName"/>
+        <result column="longitude" property="longitude"/>
+        <result column="latitude" property="latitude"/>
+        <result column="address_detail" property="addressDetail"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="is_enabled" property="isEnabled"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <!-- 分页查询违规位置列表 -->
+    <select id="selectLocationPage" resultMap="BaseResultMap">
+        SELECT
+            id, location_name, park_name, longitude, latitude,
+            address_detail, sort_order, is_enabled,
+            created_by, created_at, updated_at
+        FROM violation_locations
+        <where>
+            <if test="locationName != null and locationName != ''">
+                AND location_name LIKE CONCAT('%', #{locationName}, '%')
+            </if>
+            <if test="parkName != null and parkName != ''">
+                AND park_name = #{parkName}
+            </if>
+            <if test="isEnabled != null">
+                AND is_enabled = #{isEnabled}
+            </if>
+        </where>
+        ORDER BY sort_order ASC, created_at DESC
+    </select>
+
+    <!-- 查询启用的违规位置列表（用于下拉选择） -->
+    <select id="selectEnabledLocations" resultMap="BaseResultMap">
+        SELECT
+            id, location_name, park_name, longitude, latitude,
+            address_detail, sort_order, is_enabled,
+            created_by, created_at, updated_at
+        FROM violation_locations
+        WHERE is_enabled = 1
+        <choose>
+            <when test="parkName != null and parkName != ''">
+                AND (park_name = #{parkName} OR park_name IS NULL)
+            </when>
+            <otherwise>
+                AND park_name IS NULL
+            </otherwise>
+        </choose>
+        ORDER BY sort_order ASC, location_name ASC
+    </select>
+
+    <!-- 根据位置名称和车场查询 -->
+    <select id="selectByNameAndPark" resultMap="BaseResultMap">
+        SELECT
+            id, location_name, park_name, longitude, latitude,
+            address_detail, sort_order, is_enabled,
+            created_by, created_at, updated_at
+        FROM violation_locations
+        WHERE location_name = #{locationName}
+        <choose>
+            <when test="parkName != null and parkName != ''">
+                AND park_name = #{parkName}
+            </when>
+            <otherwise>
+                AND park_name IS NULL
+            </otherwise>
+        </choose>
+        LIMIT 1
+    </select>
+
+</mapper>
+

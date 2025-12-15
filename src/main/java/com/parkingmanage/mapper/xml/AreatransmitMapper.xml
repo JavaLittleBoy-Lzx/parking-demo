@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.AreatransmitMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Areatransmit">
+        <id column="id" property="id" />
+        <result column="province" property="province" />
+        <result column="city" property="city" />
+        <result column="district" property="district" />
+        <result column="community" property="community" />
+        <result column="building" property="building" />
+        <result column="units" property="units" />
+        <result column="floor" property="floor" />
+        <result column="openid" property="openid" />
+        <result column="enddate" property="enddate" />
+        <result column="transmitdate" property="transmitdate" />
+        <result column="sourceopenid" property="sourceopenid" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, province, city, district, community, building,units,floor, openid, enddate, transmitdate, sourceopenid
+    </sql>
+    <insert id="saveAreatransmit">
+    insert into areatransmit (province, city,district,community,building,units,floor,openid,begindate,enddate,transmitdate,sourceopenid)
+    select province,city,district,community,building,units,floor,#{openid} ,#{begindate},#{enddate},now(),#{sourceopenid}  from area
+    where openid=#{sourceopenid}
+
+    </insert>
+
+
+</mapper>

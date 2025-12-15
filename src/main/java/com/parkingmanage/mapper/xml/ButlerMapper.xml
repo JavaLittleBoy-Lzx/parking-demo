@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.ButlerMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Butler">
+        <id column="id" property="id" />
+        <result column="usercode" property="usercode" />
+        <result column="username" property="username" />
+        <result column="province" property="province" />
+        <result column="phone" property="phone" />
+        <result column="city" property="city" />
+        <result column="district" property="district" />
+        <result column="community" property="community" />
+        <result column="createdate" property="createdate" />
+        <result column="createman" property="createman" />
+        <result column="status" property="status" />
+        <result column="auditdate" property="auditdate" />
+        <result column="openid" property="openid" />
+        <result column="confirmdate" property="confirmdate" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, usercode, username,phone, province, city, district, community, createdate, createman, status, auditdate, openid, confirmdate
+    </sql>
+    <select id="getByUsercode" resultType="com.parkingmanage.entity.Butler">
+        select * from butler where province=#{province}
+        and city=#{city}
+        and district=#{district}
+        and community=#{community}
+        and usercode=#{usercode}
+    </select>
+    <select id="getManageArea" resultType="java.lang.Integer">
+        SELECT distinct a.id FROM community a,area b
+        where a.province=b.province and a.city=b.city and
+        a.district=b.district and a.community=b.community and
+        a.building=b.building and a.units=b.units and a.floor=b.floor
+        and b.province=#{province}
+        and b.city=#{city}
+        and b.district=#{district}
+        and b.community=#{community}
+        and b.usercode=#{usercode}
+    </select>
+    <select id="duplicate" resultType="java.lang.Integer">
+        select count(*) from butler  where province=#{province}  and city=#{city}
+        and district=#{district} and community=#{community} and usercode=#{usercode}
+        <if test="id!=null and id !=''">
+            and id &lt;&gt;#{id}
+        </if>
+    </select>
+    <select id="getButlerByOpenId" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from butler a
+        where a.openid=#{openid}
+    </select>
+
+    <select id="getButlerByPhone" resultMap="BaseResultMap">
+        select id, usercode, username, phone, province, city, district, community, 
+               createdate, createman, status, auditdate, openid, confirmdate
+        from butler a
+        where a.phone=#{phone}
+        limit 1
+    </select>
+
+    <select id="getButlerByName" resultMap="BaseResultMap">
+        select <include refid="Base_Column_List" />
+        from butler a
+        where a.username=#{username}
+        limit 1
+    </select>
+    <select id="getButlerByCommunity" resultType="java.lang.String">
+        select distinct username from butler where community=#{community}
+    </select>
+
+    <select id="getAllButlersByCommunity" resultMap="BaseResultMap">
+        select *
+        from butler 
+        where community=#{community}
+    </select>
+
+</mapper>

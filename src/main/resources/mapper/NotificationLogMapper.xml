@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.NotificationLogMapper">
+
+    <!-- 通用结果映射 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.NotificationLog">
+        <id column="id" property="id"/>
+        <result column="appointment_id" property="appointmentId"/>
+        <result column="plate_number" property="plateNumber"/>
+        <result column="openid" property="openid"/>
+        <result column="notification_type" property="notificationType"/>
+        <result column="template_id" property="templateId"/>
+        <result column="notify_time_point" property="notifyTimePoint"/>
+        <result column="remaining_minutes" property="remainingMinutes"/>
+        <result column="parking_minutes" property="parkingMinutes"/>
+        <result column="park_name" property="parkName"/>
+        <result column="violation_location" property="violationLocation"/>
+        <result column="receiver_type" property="receiverType"/>
+        <result column="appoint_type" property="appointType"/>
+        <result column="send_status" property="sendStatus"/>
+        <result column="send_time" property="sendTime"/>
+        <result column="success" property="success"/>
+        <result column="error_code" property="errorCode"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="wechat_msg_id" property="wechatMsgId"/>
+        <result column="wechat_response" property="wechatResponse"/>
+        <result column="send_by" property="sendBy"/>
+        <result column="retry_count" property="retryCount"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <!-- 检查是否已发送过（防止重复） -->
+    <select id="checkDuplicateSend" resultMap="BaseResultMap">
+        SELECT *
+        FROM notification_log
+        WHERE appointment_id = #{appointmentId}
+          AND notify_time_point = #{notifyTimePoint}
+          AND send_status IN (1, 2)  /* 成功或已跳过 */
+          AND send_time > DATE_SUB(NOW(), INTERVAL #{minutes} MINUTE)
+        ORDER BY send_time DESC
+        LIMIT 1
+    </select>
+
+    <!-- 根据预约ID查询 -->
+    <select id="getByAppointmentId" resultMap="BaseResultMap">
+        SELECT *
+        FROM notification_log
+        WHERE appointment_id = #{appointmentId}
+        ORDER BY send_time DESC
+    </select>
+
+    <!-- 根据车牌号查询 -->
+    <select id="getByPlateNumber" resultMap="BaseResultMap">
+        SELECT *
+        FROM notification_log
+        WHERE plate_number = #{plateNumber}
+        ORDER BY send_time DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <!-- 查询发送失败的记录 -->
+    <select id="getFailedNotifications" resultMap="BaseResultMap">
+        SELECT *
+        FROM notification_log
+        WHERE send_status = 0  /* 失败 */
+          AND send_time BETWEEN #{startTime} AND #{endTime}
+        ORDER BY send_time DESC
+    </select>
+
+    <!-- 统计发送情况（按类型） -->
+    <select id="getStatisticsByType" resultType="map">
+        SELECT 
+            notification_type AS notificationType,
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN send_status = 1 THEN 1 ELSE 0 END) AS successCount,
+            SUM(CASE WHEN send_status = 0 THEN 1 ELSE 0 END) AS failCount,
+            SUM(CASE WHEN send_status = 2 THEN 1 ELSE 0 END) AS skipCount,
+            ROUND(SUM(CASE WHEN send_status = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS successRate
+        FROM notification_log
+        WHERE send_time BETWEEN #{startTime} AND #{endTime}
+        GROUP BY notification_type
+        ORDER BY notification_type
+    </select>
+
+    <!-- 统计发送情况（按日期） -->
+    <select id="getStatisticsByDate" resultType="map">
+        SELECT 
+            DATE(send_time) AS sendDate,
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN send_status = 1 THEN 1 ELSE 0 END) AS successCount,
+            SUM(CASE WHEN send_status = 0 THEN 1 ELSE 0 END) AS failCount,
+            SUM(CASE WHEN send_status = 2 THEN 1 ELSE 0 END) AS skipCount,
+            ROUND(SUM(CASE WHEN send_status = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS successRate
+        FROM notification_log
+        WHERE send_time > DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        GROUP BY DATE(send_time)
+        ORDER BY sendDate DESC
+    </select>
+
+    <!-- 清理过期记录 -->
+    <delete id="cleanExpiredLogs">
+        DELETE FROM notification_log
+        WHERE send_time &lt; #{beforeDate}
+    </delete>
+
+    <!-- 获取最近的发送记录 -->
+    <select id="getLatestByAppointmentAndType" resultMap="BaseResultMap">
+        SELECT *
+        FROM notification_log
+        WHERE appointment_id = #{appointmentId}
+          AND notification_type = #{notificationType}
+        ORDER BY send_time DESC
+        LIMIT 1
+    </select>
+
+    <!-- 统计成功率 -->
+    <select id="getSuccessRate" resultType="double">
+        SELECT 
+            ROUND(
+                SUM(CASE WHEN send_status = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 
+                2
+            ) AS successRate
+        FROM notification_log
+        WHERE send_time BETWEEN #{startTime} AND #{endTime}
+    </select>
+
+    <!-- 查询需要重试的失败记录 -->
+    <select id="getRetryableFailedNotifications" resultMap="BaseResultMap">
+        SELECT *
+        FROM notification_log
+        WHERE send_status = 0  /* 失败 */
+          AND retry_count &lt; #{maxRetryCount}
+          AND send_time > DATE_SUB(NOW(), INTERVAL 1 HOUR)  /* 1小时内的失败记录 */
+        ORDER BY send_time ASC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+</mapper>

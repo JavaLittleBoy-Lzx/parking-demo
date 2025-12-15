@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.CommunityMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Community">
+        <id column="id" property="id"/>
+        <result column="province" property="province"/>
+        <result column="city" property="city"/>
+        <result column="district" property="district"/>
+        <result column="community" property="community"/>
+        <result column="building" property="building"/>
+        <result column="units" property="units"/>
+        <result column="floor" property="floor"/>
+        <result column="roomnumber" property="roomnumber"/>
+        <result column="is_audit" property="isAudit"/>
+        <result column="audit_start_time" property="auditStartTime"/>
+        <result column="audit_end_time" property="auditEndTime"/>
+    </resultMap>
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        province, city, district, community, id,building,units,floor
+    </sql>
+    <select id="queryCommunity" resultType="com.parkingmanage.entity.Community">
+        select DISTINCT a.province, a.city, a.district, a.community, a.building,a.units,a.floor,a.roomnumber
+        from community a
+        ${ew.customSqlSegment}
+        ORDER BY a.province, a.city, a.district, a.community, a.building,a.units,a.floor,a.roomnumber
+    </select>
+    <select id="getDistinctCommunity" resultType="com.parkingmanage.entity.Community">
+        select DISTINCT province,city,district,community
+        from community ORDER BY province,city,district,community
+    </select>
+    <select id="queryManage" resultType="com.parkingmanage.entity.Community">
+        select 1 flag,a.id,a.province,a.city,a.district,a.community,a.building,a.units,a.floor from community a,area b
+        where a.province=#{province} and a.city=#{city} and a.district=#{district} and a.community=#{community}
+        and a.province=b.province and a.city=b.city and a.district=b.district and a.community=b.community and
+        a.building=b.building
+        and a.units=b.units and a.floor=b.floor and b.openid=#{openid}
+        UNION select 0 flag,a.id,a.province,a.city,a.district,a.community,a.building,a.units,a.floor from community a
+        where a.province=#{province} and a.city=#{city} and a.district=#{district} and a.community=#{community}
+        and a.id not in (select a.id from community a,area b where a.province=#{province} and a.city=#{city} and
+        a.district=#{district} and a.community=#{community}
+        and a.province=b.province and a.city=b.city and a.district=b.district and a.community=b.community and
+        a.building=b.building
+        and a.units=b.units and a.floor=b.floor and b.openid=#{openid} )
+        ORDER BY building,units,floor
+
+    </select>
+
+    <select id="provinceList" resultType="com.parkingmanage.entity.Community">
+        select distinct province from community order by province
+    </select>
+    <select id="cityList" resultType="com.parkingmanage.entity.Community">
+        select distinct city from community where province=#{province} order by city
+    </select>
+    <select id="districtList" resultType="com.parkingmanage.entity.Community">
+        select distinct district from community where province=#{province} and city=#{city}
+        order by district
+    </select>
+    <select id="communityList" resultType="com.parkingmanage.entity.Community">
+        select distinct community from community where province=#{province} and city=#{city}
+        and district=#{district} order by community
+    </select>
+    <select id="buildingList" resultType="com.parkingmanage.entity.Community">
+        select distinct building from community where province=#{province} and city=#{city}
+        and district=#{district} and community=#{community} order by building
+    </select>
+    <select id="unitsList" resultType="com.parkingmanage.entity.Community">
+        select distinct units from community where province=#{province} and city=#{city}
+        and district=#{district} and community=#{community} and building=#{building}
+        order by units
+
+    </select>
+    <select id="floorList" resultType="com.parkingmanage.entity.Community">
+        select distinct floor from community where province=#{province} and city=#{city}
+        and district=#{district} and community=#{community} and building=#{building}
+        and units=#{units}
+        order by floor
+    </select>
+    <select id="allManage" resultType="com.parkingmanage.entity.Community">
+        select a.* from community a where 1=1
+        <if test="province!=null and province !=''">
+            and a.province like concat('%',#{province},'%')
+        </if>
+        <if test="city!=null and city !=''">
+            and a.city like concat('%',#{city},'%')
+        </if>
+        <if test="district!=null and district !=''">
+            and a.district like concat('%',#{district},'%')
+        </if>
+        <if test="community!=null and community !=''">
+            and a.community like concat('%',#{community},'%')
+        </if>
+        ORDER BY a.province,a.city,a.district,a.community,a.building,a.units,a.floor
+    </select>
+    <select id="distinctPage" resultType="com.parkingmanage.entity.Community">
+        select distinct a.province,a.city,a.district,a.community from community a where 1=1
+        <if test="province!=null and province !=''">
+            and a.province like concat('%',#{province},'%')
+        </if>
+        <if test="city!=null and city !=''">
+            and a.city like concat('%',#{city},'%')
+        </if>
+        <if test="district!=null and district !=''">
+            and a.district like concat('%',#{district},'%')
+        </if>
+        <if test="community!=null and community !=''">
+            and a.community like concat('%',#{community},'%')
+        </if>
+        ORDER BY a.province,a.city,a.district,a.community
+    </select>
+    <select id="duplicate" resultType="java.lang.Integer">
+        select count(*) from community where province=#{province} and city=#{city}
+        and district=#{district} and community=#{community} and building=#{building}
+        and units=#{units} and floor=#{floor} and roomnumber = #{roomnumber} and
+        is_audit = #{isAudit} and audit_start_time = #{auditStartTime} and audit_end_time = #{auditEndTime}
+        <if test="id!=null and id !=''">
+            and id &lt;&gt;#{id}
+        </if>
+    </select>
+    <select id="getCommunityInfo" resultType="com.parkingmanage.entity.Community">
+        select province, city, district, community, id,building,units,floor,roomnumber from community where province=#{province}
+        and city=#{city}
+        and district=#{district} and community=#{community}
+        order by province, city, district, community, id,building,units,floor,roomnumber
+    </select>
+    <select id="getBuilding" resultType="com.parkingmanage.entity.Community">
+        SELECT distinct building,building as id FROM `community`
+        where province=#{province} and city=#{city} and district=#{district} and community=#{community}
+        order by building
+    </select>
+    <select id="getOnlyCommunity" resultType="com.parkingmanage.entity.Community">
+        SELECT distinct province, city, district, community FROM community
+        ORDER BY province, city, district, community
+    </select>
+    <select id="getOnlyBuilding" resultType="com.parkingmanage.entity.Community">
+        SELECT distinct province, city, district, community,building FROM community
+        where province=#{province} and city=#{city} and district=#{district} and community=#{community}
+        ORDER BY province, city, district, community,building
+    </select>
+    <select id="getOnlyUnits" resultType="com.parkingmanage.entity.Community">
+        SELECT distinct province, city, district, community,building,units FROM community
+        where province=#{province} and city=#{city} and district=#{district} and community=#{community} and
+        building=#{building}
+
+        ORDER BY province, city, district, community,building,units
+    </select>
+    <select id="getOnlyFloor" resultType="com.parkingmanage.entity.Community">
+        SELECT distinct province, city, district, community,building,units,floor FROM community
+        where province=#{province} and city=#{city} and district=#{district} and community=#{community} and
+        building=#{building}
+        and units=#{units}
+        ORDER BY province, city, district, community,building,units ,floor
+    </select>
+    <select id="getOnlyRoomNumber" resultType="com.parkingmanage.entity.Community">
+        SELECT distinct province, city, district, community,building,units,floor,roomnumber FROM community
+        where province=#{province} and city=#{city} and district=#{district} and community=#{community} and
+        building=#{building}
+        and units=#{units} and floor=#{floor}
+        ORDER BY province, city, district, community,building,units ,floor ,roomnumber
+    </select>
+    <select id="findIsAuditByCommunityName" resultType="java.lang.String">
+        SELECT DISTINCT is_audit FROM community WHERE community = #{community};
+    </select>
+    <select id="butlerCommunityAuditTime" resultType="com.parkingmanage.entity.Community">
+        SELECT audit_start_time,audit_end_time FROM community WHERE community = #{butlerCommunity} LIMIT 1;
+    </select>
+    <select id="getCommunityName" resultType="com.parkingmanage.entity.Community">
+        SELECT DISTINCT community FROM community;
+    </select>
+    <select id="duplicatePage" resultType="com.parkingmanage.entity.Community">
+        SELECT DISTINCT province, city,district,community FROM community WHERE community = #{community};
+    </select>
+    <select id="findProvinceByCommunityName" resultType="com.parkingmanage.entity.Community">
+        SELECT * FROM community WHERE community = #{community}
+        <if test="building != null and building != ''">
+            AND building = #{building}
+        </if>
+        <if test="units != null and units != ''">
+            AND units = #{units}
+        </if>
+        <if test="floor != null and floor != ''">
+            AND floor = #{floor}
+        </if>
+        <if test="room != null and room != ''">
+            AND roomnumber = #{room}
+        </if>
+        LIMIT 1
+    </select>
+</mapper>

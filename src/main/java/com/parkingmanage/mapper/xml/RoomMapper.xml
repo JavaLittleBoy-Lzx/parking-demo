@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.RoomMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.Room">
+        <id column="id" property="id" />
+        <result column="province" property="province" />
+        <result column="city" property="city" />
+        <result column="district" property="district" />
+        <result column="community" property="community" />
+        <result column="building" property="building" />
+        <result column="units" property="units" />
+        <result column="floor" property="floor" />
+        <result column="roomnumber" property="roomnumber" />
+        <result column="parking" property="parking" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        province, city, district, community, id,building,units,floor,roomnumber,parking
+    </sql>
+    <select id="queryCommunity" resultType="com.parkingmanage.entity.Room">
+         select DISTINCT a.province, a.city, a.district, a.community, a.building,a.units,a.floor
+        from Room a
+        ${ew.customSqlSegment}
+        ORDER BY a.province, a.city, a.district, a.community, a.building,a.units,a.floor
+    </select>
+    <select id="getDistinctCommunity" resultType="com.parkingmanage.entity.Room">
+        select DISTINCT province,city,district,community
+        from Room ORDER BY province,city,district,community
+    </select>
+    <select id="queryManage" resultType="com.parkingmanage.entity.Room">
+        select 1 flag,
+               a.id,
+               a.province,
+               a.city,
+               a.district,
+               a.community,
+               a.building,
+               a.units,
+               a.floor,
+               a.parking
+        from Room a,
+             area b
+        where a.province = #{province}
+          and a.city = #{city}
+          and a.district = #{district}
+          and a.community = #{community}
+          and a.province = b.province
+          and a.city = b.city
+          and a.district = b.district
+          and a.community = b.community
+          and a.building = b.building
+          and a.units = b.units
+          and a.floor = b.floor
+          and b.openid = #{openid}
+        UNION
+        select 0 flag,
+               a.id,
+               a.province,
+               a.city,
+               a.district,
+               a.community,
+               a.building,
+               a.units,
+               a.floor,
+               a.parking
+        from Room a
+        where a.province = #{province}
+          and a.city = #{city}
+          and a.district = #{district}
+          and a.community = #{community}
+          and a.id not in (select a.id
+                           from community a,
+                                area b
+                           where a.province = #{province}
+                             and a.city = #{city}
+                             and a.district = #{district}
+                             and a.community = #{community}
+                             and a.province = b.province
+                             and a.city = b.city
+                             and a.district = b.district
+                             and a.community = b.community
+                             and a.building = b.building
+                             and a.units = b.units
+                             and a.floor = b.floor
+                             and b.openid = #{openid})
+        ORDER BY building, units, floor
+    </select>
+
+    <select id="provinceList" resultType="com.parkingmanage.entity.Room">
+        select distinct province from Room order by province
+    </select>
+    <select id="cityList" resultType="com.parkingmanage.entity.Room">
+        select distinct city from Room where province=#{province} order by city
+    </select>
+    <select id="districtList" resultType="com.parkingmanage.entity.Room">
+        select distinct district from Room where province=#{province}  and city=#{city}
+        order by district
+    </select>
+    <select id="communityList" resultType="com.parkingmanage.entity.Room">
+        select distinct community from Room where province=#{province}  and city=#{city}
+        and district=#{district} order by community
+    </select>
+    <select id="buildingList" resultType="com.parkingmanage.entity.Room">
+         select distinct building from Room where province=#{province}  and city=#{city}
+        and district=#{district} and community=#{community} order by building
+    </select>
+    <select id="unitsList" resultType="com.parkingmanage.entity.Room">
+        select distinct units from Room where province=#{province}  and city=#{city}
+        and district=#{district} and community=#{community} and building=#{building}
+        order by units
+
+    </select>
+    <select id="floorList" resultType="com.parkingmanage.entity.Room">
+        select distinct floor from Room where province=#{province}  and city=#{city}
+        and district=#{district} and community=#{community} and building=#{building}
+        and units=#{units}
+        order by floor
+    </select>
+    <select id="allManage" resultType="com.parkingmanage.entity.Room">
+        select a.* from Room a where 1=1
+        <if test="province!=null and province !=''">
+            and a.province like concat('%',#{province},'%')
+        </if>
+        <if test="city!=null and city !=''">
+            and a.city like concat('%',#{city},'%')
+        </if>
+        <if test="district!=null and district !=''">
+            and a.district  like concat('%',#{district},'%')
+        </if>
+        <if test="community!=null and community !=''">
+            and a.community  like concat('%',#{community},'%')
+        </if>
+        ORDER BY a.province,a.city,a.district,a.community,a.building,a.units,a.floor
+    </select>
+    <select id="distinctPage" resultType="com.parkingmanage.entity.Room">
+        select distinct a.province,a.city,a.district,a.community from Room a where 1=1
+        <if test="province!=null and province !=''">
+            and a.province like concat('%',#{province},'%')
+        </if>
+        <if test="city!=null and city !=''">
+            and a.city like concat('%',#{city},'%')
+        </if>
+        <if test="district!=null and district !=''">
+            and a.district  like concat('%',#{district},'%')
+        </if>
+        <if test="community!=null and community !=''">
+            and a.community  like concat('%',#{community},'%')
+        </if>
+        ORDER BY a.province,a.city,a.district,a.community
+    </select>
+    <select id="duplicate" resultType="java.lang.Integer">
+       select count(*) from Room  where province=#{province}  and city=#{city}
+        and district=#{district} and community=#{community} and building=#{building}
+        and units=#{units} and floor=#{floor} and roomnumber=#{roomnumber}
+    </select>
+</mapper>

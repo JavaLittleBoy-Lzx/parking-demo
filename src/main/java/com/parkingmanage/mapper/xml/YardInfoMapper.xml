@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.parkingmanage.mapper.YardInfoMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.parkingmanage.entity.YardInfo">
+        <id column="id" property="id" />
+        <result column="yard_code" property="yardCode" />
+        <result column="yard_name" property="yardName" />
+        <result column="yard_no" property="yardNo" />
+        <result column="sms_template_id" property="smsTemplateId" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, yard_code, yard_name, yard_no, sms_template_id
+    </sql>
+    <select id="duplicate" resultType="java.lang.Integer">
+        select count(*) from yard_info  where yard_code=#{yardCode}  and yard_name=#{yardName}
+        <if test="id!=null and id !=''">
+            and id &lt;&gt;#{id}
+        </if>
+    </select>
+    <select id="queryYardInfo" resultType="com.parkingmanage.entity.YardInfo">
+        select DISTINCT a.yard_code, a.yard_name
+        from yard_info a
+        ${ew.customSqlSegment}
+        ORDER BY a.yard_code, a.yard_name
+    </select>
+    <select id="yardCodeList" resultType="com.parkingmanage.entity.YardInfo">
+         select distinct yard_code from yard_info order by yard_code
+    </select>
+
+    <select id="expYardNameList" resultType="com.parkingmanage.entity.YardInfo">
+        select distinct yard_name from yard_info order by yard_name
+    </select>
+    <select id="yardNameList" resultType="com.parkingmanage.entity.YardInfo">
+        select yard_name from yard_info
+    </select>
+    <select id="yardCode" resultType="java.lang.String">
+        select yard_code from yard_info where yard_name=#{yardName}
+    </select>
+    <select id="yardByName" resultType="com.parkingmanage.entity.YardInfo">
+        select * from yard_info
+        where yard_name = #{parkName}
+    </select>
+    <select id="selectParkCode" resultType="java.lang.String">
+        select yard_code from yard_info
+        where yard_name = #{parkName}
+    </select>
+    <select id="selectByParkCode" resultType="java.lang.String">
+        select yard_name from yard_info
+        where yard_code = #{parkCode}
+        and deleted = 0
+    </select>
+
+</mapper>
