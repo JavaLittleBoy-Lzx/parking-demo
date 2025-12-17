@@ -232,17 +232,19 @@ public interface ViolationsMapper extends BaseMapper<Violations> {
             @Param("onlyUnprocessed") Boolean onlyUnprocessed
     );
 
-    // ==================== 📊 新增统计图表查询方法 ====================
+    // ==================== 新增统计图表查询方法 ====================
 
     /**
      * 1. 高频违规车辆Top N统计
      * @param days 统计天数
      * @param limit 返回数量
+     * @param parkName 车场名称（可选）
      * @return 高频违规车辆列表
      */
     List<Map<String, Object>> selectTopViolators(
             @Param("days") Integer days,
-            @Param("limit") Integer limit
+            @Param("limit") Integer limit,
+            @Param("parkName") String parkName
     );
 
     /**

@@ -38,10 +38,30 @@ public class MonthTicketSearchController {
         @ApiParam("每页大小") @RequestParam(defaultValue = "100") Integer size
     ) {
         try {
+            System.out.println("=================================================");
+            System.out.println(" [smartSearch] 收到搜索请求:");
+            System.out.println("   - keyword: '" + keyword + "'");
+            System.out.println("   - parkName: '" + parkName + "'");
+            System.out.println("   - page: " + page + ", size: " + size);
+            System.out.println("=================================================");
+            
             SearchResult<MonthTicketVehicleDTO> result = searchService.smartSearch(keyword, parkName, onlyInPark, page, size);
+            
+            System.out.println("=================================================");
+            System.out.println(" [smartSearch] 搜索完成:");
+            System.out.println("   - 总结果数: " + result.getTotal());
+            System.out.println("   - 当前页记录数: " + (result.getRecords() != null ? result.getRecords().size() : 0));
+            if (result.getRecords() != null && !result.getRecords().isEmpty()) {
+                System.out.println("   - 第一条记录: " + result.getRecords().get(0).getPlateNumber() + 
+                                 " - " + result.getRecords().get(0).getOwnerName() + 
+                                 " - " + result.getRecords().get(0).getOwnerPhone());
+            }
+            System.out.println("=================================================");
+            
             return ResponseEntity.ok(Result.success(result));
         } catch (Exception e) {
             e.printStackTrace();
+            System.err.println(" [smartSearch] 搜索异常: " + e.getMessage());
             return ResponseEntity.ok(Result.error("搜索失败: " + e.getMessage()));
         }
     }

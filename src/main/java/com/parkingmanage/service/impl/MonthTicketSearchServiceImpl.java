@@ -204,27 +204,41 @@ public class MonthTicketSearchServiceImpl implements MonthTicketSearchService {
         List<MonthTick> monthTickets = searchMonthTickets(condition);
         System.out.println("📊 获取到月票记录数: " + monthTickets.size());
         
-        // 2. 拆分为单个车辆记录
+        // 2. 转换为DTO对象，不拆分车牌，保持月票记录原样
         List<MonthTicketVehicleDTO> vehicles = new ArrayList<>();
-        int emptyCarNoCount = 0;
-        int validCarNoCount = 0;
         
         for (MonthTick ticket : monthTickets) {
-            if (!StringUtils.hasText(ticket.getCarNo())) {
-                emptyCarNoCount++;
-                continue;
-            }
-            validCarNoCount++;
-            vehicles.addAll(splitMonthTicketToVehicles(ticket));
+            // 直接转换，不拆分车牌
+            MonthTicketVehicleDTO vehicle = new MonthTicketVehicleDTO();
+            vehicle.setMonthTicketId(ticket.getId() != null ? ticket.getId().longValue() : 0L);
+            vehicle.setPlateNumber(ticket.getCarNo()); // 保持原始车牌字符串（可能包含多个车牌）
+            vehicle.setTicketName(ticket.getTicketName());
+            vehicle.setOwnerName(ticket.getUserName());
+            vehicle.setOwnerPhone(ticket.getUserPhone());
+            vehicle.setParkName(ticket.getParkName());
+            vehicle.setValidStatus(ticket.getValidStatus());
+            vehicle.setIsFrozen(ticket.getIsFrozen());
+            vehicle.setStartTime(ticket.getCreateTime());
+            vehicle.setEndTime(ticket.getUpdateTime());
+            vehicle.setRemark1(ticket.getRemark1());
+            vehicle.setRemark2(ticket.getRemark2());
+            vehicle.setRemark3(ticket.getRemark3());
+            vehicle.setParkingSpot(ticket.getRemark1()); // 车位信息
+            
+            // 性能优化：不查询预约和违规记录数，避免N+1查询问题
+            vehicle.setAppointmentCount(0);
+            vehicle.setViolationCount(0);
+            vehicle.setCreditScore(100);
+            vehicle.setIsInPark(null);
+            
+            vehicles.add(vehicle);
         }
         
         System.out.println("📈 统计信息:");
         System.out.println("  - 总月票记录数: " + monthTickets.size());
-        System.out.println("  - 空车牌号记录数: " + emptyCarNoCount);
-        System.out.println("  - 有效车牌号记录数: " + validCarNoCount);
-        System.out.println("🚗 拆分后的车辆总数: " + vehicles.size());
+        System.out.println("  - 转换后的记录数: " + vehicles.size());
         if (!vehicles.isEmpty()) {
-            System.out.println("🚗 第一个车辆示例: " + vehicles.get(0).getPlateNumber() + " - " + vehicles.get(0).getOwnerName());
+            System.out.println("🚗 第一条记录: " + vehicles.get(0).getPlateNumber() + " - " + vehicles.get(0).getOwnerName() + " - " + vehicles.get(0).getParkName());
         }
         
         // 3. 过滤匹配的记录
@@ -232,7 +246,7 @@ public class MonthTicketSearchServiceImpl implements MonthTicketSearchService {
             .filter(vehicle -> {
                 boolean matches = matchesKeyword(vehicle, condition.getKeyword());
                 if (matches) {
-                    System.out.println("✅ 匹配车辆: " + vehicle.getPlateNumber() + " - " + vehicle.getOwnerName());
+//                    System.out.println("✅ 匹配记录: " + vehicle.getPlateNumber() + " - " + vehicle.getOwnerName() + " - parkName: " + vehicle.getParkName());
                 }
                 return matches;
             })
@@ -471,33 +485,44 @@ public class MonthTicketSearchServiceImpl implements MonthTicketSearchService {
      */
     private SearchCondition buildSearchCondition(String keyword, String parkName, Boolean onlyInPark, Integer page, Integer size) {
         SearchCondition condition = new SearchCondition();
-        condition.setKeyword(keyword);
+        
+        // 对关键词进行trim处理，去除前后空格
+        String trimmedKeyword = keyword != null ? keyword.trim() : null;
+        condition.setKeyword(trimmedKeyword);
         condition.setParkName(parkName);
         condition.setOnlyInPark(onlyInPark);
         condition.setPage(page != null ? page : 1);
         condition.setSize(size != null ? size : 20);
         
         // 根据关键词类型设置不同的搜索策略
-        if (isPlateNumber(keyword)) {
+        if (isPlateNumber(trimmedKeyword)) {
             condition.setSearchType(SearchCondition.SearchType.PLATE_NUMBER);
-        } else if (isPhoneNumber(keyword)) {
+        } else if (isPhoneNumber(trimmedKeyword)) {
             condition.setSearchType(SearchCondition.SearchType.PHONE_NUMBER);
         } else {
             // 对于部分车牌号或其他关键词，使用多字段搜索
             condition.setSearchType(SearchCondition.SearchType.MIXED);
         }
         
-        System.out.println("🔍 搜索条件: keyword=" + keyword + ", searchType=" + condition.getSearchType());
+        System.out.println("🔍 搜索条件: keyword=" + trimmedKeyword + ", searchType=" + condition.getSearchType());
         
         return condition;
     }
 
     /**
-     * 搜索月票记录 - 调用外部API
+     * 搜索月票记录 - 优先使用本地数据库
      */
     private List<MonthTick> searchMonthTickets(SearchCondition condition) {
         try {
-            // 🆕 优化策略：为了获取更多数据，统一使用并发查询
+            // 🆕 优化策略：手机号、姓名、混合搜索都使用本地数据库（数据更完整，速度更快）
+            if (condition.getSearchType() == SearchCondition.SearchType.PHONE_NUMBER ||
+                condition.getSearchType() == SearchCondition.SearchType.OWNER_NAME ||
+                condition.getSearchType() == SearchCondition.SearchType.MIXED) {
+                System.out.println("� 检测到精确搜索类型: " + condition.getSearchType() + "，直接使用本地数据库（数据更完整）");
+                return searchMonthTicketsFromDB(condition);
+            }
+            
+            // 车牌号搜索使用API查询
             System.out.println("🔍 搜索策略: 使用并发查询获取所有可用数据");
             
             // 先尝试从缓存获取
@@ -972,9 +997,22 @@ public class MonthTicketSearchServiceImpl implements MonthTicketSearchService {
                     String carNo = (String) apiData.get("carNo");
                     monthTick.setCarNo(processCarNo(carNo));
                     monthTick.setUserName((String) apiData.get("userName"));
-                    monthTick.setUserPhone((String) apiData.get("userPhone"));
+                    
+                    // 处理手机号：去除前后空格
+                    String userPhone = (String) apiData.get("userPhone");
+                    monthTick.setUserPhone(userPhone != null ? userPhone.trim() : null);
+                    
                     monthTick.setTicketName((String) apiData.get("ticketName"));
-                    monthTick.setParkName((String) apiData.get("parkName"));
+                    
+                    // 处理parkName：将字符串"null"转换为null，去除前后空格
+                    String parkName = (String) apiData.get("parkName");
+                    if (parkName != null) {
+                        parkName = parkName.trim();
+                        if ("null".equalsIgnoreCase(parkName) || parkName.isEmpty()) {
+                            parkName = null; // 将字符串"null"转换为真正的null
+                        }
+                    }
+                    monthTick.setParkName(parkName);
                     
                     // 如果carNo为空，尝试其他可能的字段名
                     if (!StringUtils.hasText(carNo)) {
@@ -1107,6 +1145,20 @@ public class MonthTicketSearchServiceImpl implements MonthTicketSearchService {
             .collect(Collectors.toList());
             
         System.out.println("🔍 过滤完成，匹配 " + filteredList.size() + " 条记录");
+        
+        // 打印匹配的记录详情
+        if (!filteredList.isEmpty() && filteredList.size() <= 10) {
+            System.out.println("📋 匹配的记录详情:");
+            for (int i = 0; i < filteredList.size(); i++) {
+                MonthTick tick = filteredList.get(i);
+                System.out.println("   [" + (i+1) + "] userName: '" + tick.getUserName() + "', " +
+                                 "userPhone: '" + tick.getUserPhone() + "', " +
+                                 "carNo: '" + tick.getCarNo() + "', " +
+                                 "ticketName: '" + tick.getTicketName() + "', " +
+                                 "parkName: '" + tick.getParkName() + "'");
+            }
+        }
+        
         return filteredList;
     }
 
@@ -1114,6 +1166,11 @@ public class MonthTicketSearchServiceImpl implements MonthTicketSearchService {
      * 从本地数据库搜索月票记录（作为备用方案）
      */
     private List<MonthTick> searchMonthTicketsFromDB(SearchCondition condition) {
+        System.out.println("📊 [数据库查询] 开始查询:");
+        System.out.println("   - keyword: '" + condition.getKeyword() + "'");
+        System.out.println("   - parkName: '" + condition.getParkName() + "'");
+        System.out.println("   - searchType: " + condition.getSearchType());
+        
         QueryWrapper<MonthTick> queryWrapper = new QueryWrapper<>();
         
         String keyword = condition.getKeyword();
@@ -1122,32 +1179,59 @@ public class MonthTicketSearchServiceImpl implements MonthTicketSearchService {
             switch (condition.getSearchType()) {
                 case PLATE_NUMBER:
                     queryWrapper.like("car_no", keyword);
+                    System.out.println("   - SQL条件: car_no LIKE '%" + keyword + "%'");
                     break;
                 case PHONE_NUMBER:
                     queryWrapper.like("user_phone", keyword);
+                    System.out.println("   - SQL条件: user_phone LIKE '%" + keyword + "%'");
                     break;
                 case OWNER_NAME:
                     queryWrapper.like("user_name", keyword);
+                    System.out.println("   - SQL条件: user_name LIKE '%" + keyword + "%'");
                     break;
                 default:
-                    // 多字段搜索
+                    // 多字段搜索（车牌号、业主姓名、手机号）
                     queryWrapper.and(wrapper -> wrapper
                         .like("car_no", keyword)
                         .or().like("user_name", keyword)
-                        .or().like("user_phone", keyword)
-                        .or().like("ticket_name", keyword));
+                        .or().like("user_phone", keyword));
+                    System.out.println("   - SQL条件: 多字段LIKE搜索(车牌/姓名/手机)");
             }
         }
         
         if (StringUtils.hasText(condition.getParkName())) {
             // 使用模糊匹配，支持停车场名称部分匹配
             queryWrapper.like("park_name", condition.getParkName());
+            System.out.println("   - 添加车场过滤: park_name LIKE '%" + condition.getParkName() + "%'");
         }
         
         // 只查询有效的月票
         queryWrapper.in("valid_status", Arrays.asList(1, 4)); // 1-有效, 4-过期但仍显示
+        System.out.println("   - 有效状态过滤: valid_status IN (1, 4)");
         
-        return monthTicketMapper.selectList(queryWrapper);
+        // 打印实际生成的SQL（用于调试）
+        System.out.println("📝 [SQL调试] 实际SQL条件: " + queryWrapper.getCustomSqlSegment());
+        
+        List<MonthTick> results = monthTicketMapper.selectList(queryWrapper);
+        System.out.println("✅ [数据库查询] 查询完成，返回 " + results.size() + " 条记录");
+        
+        // 打印前5条记录的详细信息用于调试
+        if (!results.isEmpty()) {
+            int count = Math.min(5, results.size());
+            System.out.println("📋 前" + count + "条记录详细信息:");
+            for (int i = 0; i < count; i++) {
+                MonthTick tick = results.get(i);
+                System.out.println("   [" + (i+1) + "] id: " + tick.getId() + ", " +
+                                 "userName: '" + tick.getUserName() + "', " +
+                                 "userPhone: '" + tick.getUserPhone() + "', " +
+                                 "carNo: '" + tick.getCarNo() + "', " +
+                                 "parkName: '" + tick.getParkName() + "', " +
+                                 "ticketName: '" + tick.getTicketName() + "', " +
+                                 "validStatus: " + tick.getValidStatus());
+            }
+        }
+        
+        return results;
     }
 
     /**
@@ -1162,29 +1246,18 @@ public class MonthTicketSearchServiceImpl implements MonthTicketSearchService {
         }
         
         if (!StringUtils.hasText(monthTicket.getCarNo())) {
-            System.out.println("⚠️ 跳过无车牌号的记录: id=" + monthTicket.getId() + 
-                             ", userName=" + monthTicket.getUserName() + 
-                             ", carNo='" + monthTicket.getCarNo() + "'");
             return vehicles;
         }
-        
-        System.out.println("🔄 处理月票: carNo=" + monthTicket.getCarNo() + 
-                         ", id=" + monthTicket.getId() + 
-                         ", userName=" + monthTicket.getUserName());
+
         
         // 按逗号分割车牌号
         String[] plateNumbers = monthTicket.getCarNo().split(",");
-        System.out.println("🔍 拆分车牌号: " + Arrays.toString(plateNumbers));
         
         for (int i = 0; i < plateNumbers.length; i++) {
             String plateNumber = plateNumbers[i].trim();
             if (!StringUtils.hasText(plateNumber)) {
-                System.out.println("⚠️ 跳过空车牌号: index=" + i + ", plateNumber='" + plateNumber + "'");
                 continue;
             }
-            
-            System.out.println("✅ 创建车辆记录: " + plateNumber);
-            
             MonthTicketVehicleDTO vehicle = new MonthTicketVehicleDTO();
             // 安全设置ID
             if (monthTicket.getId() != null) {
@@ -1296,8 +1369,14 @@ public class MonthTicketSearchServiceImpl implements MonthTicketSearchService {
         if (!StringUtils.hasText(keyword)) {
             return false;
         }
-        return PLATE_PATTERN.matcher(keyword.toUpperCase()).matches() || 
-               keyword.length() >= 7 && keyword.matches(".*[A-Z0-9].*");
+        // 完整车牌号匹配
+        if (PLATE_PATTERN.matcher(keyword.toUpperCase()).matches()) {
+            return true;
+        }
+        // 部分车牌号匹配：长度>=7，包含字母或数字，但排除纯数字（避免与手机号冲突）
+        return keyword.length() >= 7 && 
+               keyword.matches(".*[A-Z0-9].*") && 
+               !keyword.matches("\\d+"); // 排除纯数字
     }
 
     /**

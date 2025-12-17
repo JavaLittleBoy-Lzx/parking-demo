@@ -376,9 +376,10 @@ public interface ViolationsService extends IService<Violations> {
      * 高频违规车辆Top统计
      * @param days 统计天数
      * @param limit 返回数量
+     * @param parkName 车场名称（可选）
      * @return 统计结果
      */
-    List<Map<String, Object>> getTopViolators(Integer days, Integer limit);
+    List<Map<String, Object>> getTopViolators(Integer days, Integer limit, String parkName);
 
     /**
      * 违规记录趋势统计

@@ -13,6 +13,7 @@ import com.parkingmanage.service.OvernightParkingService;
 import com.parkingmanage.service.AcmsVipService;
 import com.parkingmanage.service.ViolationConfigService;
 import com.parkingmanage.service.YardSmsTemplateRelationService;
+import com.parkingmanage.service.ActivityLogService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -78,6 +79,9 @@ public class ViolationsServiceImpl extends ServiceImpl<ViolationsMapper, Violati
     
     @Resource
     private VehicleReservationMapper vehicleReservationMapper;
+    
+    @Resource
+    private ActivityLogService activityLogService;
     
     /**
      * 🆕 根据车场名称获取短信模板配置
@@ -2413,17 +2417,100 @@ public class ViolationsServiceImpl extends ServiceImpl<ViolationsMapper, Violati
         try {
             log.info("🗑️ [删除违规记录] 开始删除车牌号: {}, 停车场编码: {} 的所有违规记录", plateNumber, parkCode);
             
-            LambdaQueryWrapper<Violations> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Violations::getPlateNumber, plateNumber);
+            // 🆕 删除前先查询要删除的记录，记录详细信息
+            LambdaQueryWrapper<Violations> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(Violations::getPlateNumber, plateNumber);
             
             if (StringUtils.hasText(parkCode)) {
-                wrapper.eq(Violations::getParkCode, parkCode);
+                queryWrapper.eq(Violations::getParkCode, parkCode);
             }
             
-            int deletedCount = violationsMapper.delete(wrapper);
+            // 查询即将删除的违规记录
+            List<Violations> toDeleteRecords = violationsMapper.selectList(queryWrapper);
+            
+            if (toDeleteRecords.isEmpty()) {
+                log.info("ℹ️ [删除违规记录] 未找到匹配的违规记录，车牌号: {}, 停车场编码: {}", plateNumber, parkCode);
+                return 0;
+            }
+            
+            // 🆕 详细记录每条要删除的违规记录信息
+            log.info("📋 [删除违规记录详情] 即将删除 {} 条违规记录，详细信息如下：", toDeleteRecords.size());
+            
+            for (int i = 0; i < toDeleteRecords.size(); i++) {
+                Violations record = toDeleteRecords.get(i);
+                log.info("🔍 [违规记录{}] ID: {}, 车牌: {}, 车场: {}, 违规类型: {}, 违规位置: {}, 违规描述: {}, 进场时间: {}, 离场时间: {}, 预约时间: {}, 是否月票车: {}, 车主ID: {}, 预约ID: {}, 月票ID: {}",
+                    (i + 1),
+                    record.getId(),
+                    record.getPlateNumber(),
+                    record.getParkName() != null ? record.getParkName() : record.getParkCode(),
+                    record.getViolationType(),
+                    record.getLocation(),
+                    record.getDescription(),
+                    record.getEnterTime(),
+                    record.getLeaveTime(),
+                    record.getAppointmentTime(),
+                    record.getIsMonthlyTicket(),
+                    record.getOwnerId(),
+                    record.getAppointmentId(),
+                    record.getMonthTicketId()
+                );
+            }
+            
+            // 🆕 记录删除操作到活动日志表
+            try {
+                StringBuilder deletionDetails = new StringBuilder();
+                deletionDetails.append("删除违规记录详情：\n");
+                deletionDetails.append("车牌号：").append(plateNumber).append("\n");
+                deletionDetails.append("停车场：").append(parkCode).append("\n");
+                deletionDetails.append("删除数量：").append(toDeleteRecords.size()).append("条\n");
+                deletionDetails.append("删除记录明细：\n");
+                
+                for (int i = 0; i < toDeleteRecords.size(); i++) {
+                    Violations record = toDeleteRecords.get(i);
+                    deletionDetails.append(String.format("[%d] ID:%d, 违规类型:%s, 位置:%s, 进场:%s, 离场:%s\n",
+                        (i + 1),
+                        record.getId(),
+                        record.getViolationType(),
+                        record.getLocation(),
+                        record.getEnterTime(),
+                        record.getLeaveTime()
+                    ));
+                }
+                
+                // 记录到活动日志
+                ActivityLog activityLog = new ActivityLog();
+                activityLog.setUsername("系统自动");
+                activityLog.setModule("违规记录管理");
+                activityLog.setAction("批量删除违规记录");
+                activityLog.setDescription(deletionDetails.toString());
+                activityLog.setStatus("success");
+                activityLog.setCreatedAt(java.time.LocalDateTime.now());
+                activityLog.setIpAddress("127.0.0.1");
+                activityLog.setUserAgent("System");
+                
+                activityLogService.save(activityLog);
+                log.info("📝 [活动日志] 违规记录删除操作已记录到活动日志表");
+                
+            } catch (Exception logEx) {
+                log.error("⚠️ [活动日志异常] 记录违规删除日志失败: {}", logEx.getMessage());
+            }
+            
+            // 执行删除操作
+            LambdaQueryWrapper<Violations> deleteWrapper = new LambdaQueryWrapper<>();
+            deleteWrapper.eq(Violations::getPlateNumber, plateNumber);
+            
+            if (StringUtils.hasText(parkCode)) {
+                deleteWrapper.eq(Violations::getParkCode, parkCode);
+            }
+            
+            int deletedCount = violationsMapper.delete(deleteWrapper);
             
             log.info("✅ [删除违规记录] 成功删除 {} 条记录，车牌号: {}, 停车场编码: {}", 
                     deletedCount, plateNumber, parkCode);
+            
+            // 🆕 删除完成后的汇总日志
+            log.info("🎯 [删除违规记录汇总] 车牌: {}, 停车场: {}, 预期删除: {}条, 实际删除: {}条, 操作时间: {}", 
+                    plateNumber, parkCode, toDeleteRecords.size(), deletedCount, java.time.LocalDateTime.now());
             
             return deletedCount;
             
@@ -2560,9 +2647,9 @@ public class ViolationsServiceImpl extends ServiceImpl<ViolationsMapper, Violati
     // ==================== 📊 新增统计分析实现 ====================
 
     @Override
-    public List<Map<String, Object>> getTopViolators(Integer days, Integer limit) {
-        log.info("📊 查询高频违规车辆Top{}, 近{}天", limit, days);
-        return violationsMapper.selectTopViolators(days, limit);
+    public List<Map<String, Object>> getTopViolators(Integer days, Integer limit, String parkName) {
+        log.info("📊 查询高频违规车辆Top{}, 近{}天, 车场: {}", limit, days, parkName);
+        return violationsMapper.selectTopViolators(days, limit, parkName);
     }
 
     @Override

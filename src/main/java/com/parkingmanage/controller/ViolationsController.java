@@ -2017,11 +2017,12 @@ public class ViolationsController {
     @ApiOperation("高频违规车辆Top10统计")
     public Result<List<Map<String, Object>>> getTopViolators(
             @ApiParam("统计天数") @RequestParam(defaultValue = "30") Integer days,
-            @ApiParam("返回数量") @RequestParam(defaultValue = "10") Integer limit) {
+            @ApiParam("返回数量") @RequestParam(defaultValue = "10") Integer limit,
+            @ApiParam("车场名称") @RequestParam(required = false) String parkName) {
         try {
-            log.info("📊 [统计接口] 高频违规车辆Top{} - 近{}天", limit, days);
+            log.info("📊 [统计接口] 高频违规车辆Top{} - 近{}天, 车场: {}", limit, days, parkName);
             
-            List<Map<String, Object>> result = violationsMapper.selectTopViolators(days, limit);
+            List<Map<String, Object>> result = violationsMapper.selectTopViolators(days, limit, parkName);
             
             log.info("✅ [统计接口] 高频违规车辆查询成功 - 返回{}条", result.size());
             return Result.success(result);

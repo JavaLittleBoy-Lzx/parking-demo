@@ -714,6 +714,9 @@
             MAX(v.created_at) as lastViolationTime
         FROM violations v
         WHERE v.created_at >= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        <if test="parkName != null and parkName != ''">
+            AND v.park_name = #{parkName}
+        </if>
         GROUP BY v.plate_number, v.park_name
         ORDER BY violationCount DESC
         LIMIT #{limit}

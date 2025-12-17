@@ -1098,6 +1098,155 @@ public class BlackListController {
     }
 
     /**
+     * 🆕 查询车场黑名单中的物业员工车辆 (筛选未知车主版)
+     * 
+     * @param parkCode 车场编码
+     * @param maxCheck 最大检查数量，默认200，先筛选未知车主再查询月票
+     * @return 物业员工车辆的车牌号列表
+     */
+    @ApiOperation("查询车场黑名单中的物业员工车辆")
+    @GetMapping("/getPropertyStaffVehiclesInBlacklist")
+    public ResponseEntity<Map<String, Object>> getPropertyStaffVehiclesInBlacklist(
+            @RequestParam String parkCode,
+            @RequestParam(defaultValue = "1000") Integer maxCheck) {
+        
+        Map<String, Object> result = new HashMap<>();
+        List<String> propertyStaffPlates = new ArrayList<>();
+        List<String> unknownOwnerPlates = new ArrayList<>();
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            System.out.println("🏢 [物业员工黑名单查询] 开始查询车场: " + parkCode + ", 最大检查数: " + maxCheck);
+            
+            // 第一步：查询车场的所有黑名单车辆
+            HashMap<String, Object> blacklistParams = new HashMap<>();
+            blacklistParams.put("parkCodeList", Arrays.asList(parkCode));
+            blacklistParams.put("pageNum", 1);
+            blacklistParams.put("pageSize", Math.min(maxCheck, 1000));
+            
+            JSONObject blacklistResponse = aikeConfig.downHandler(
+                AIKEConfig.AK_URL, 
+                AIKEConfig.AK_KEY, 
+                AIKEConfig.AK_SECRET, 
+                "getParkBlackList", 
+                blacklistParams);
+            
+            if (blacklistResponse != null && blacklistResponse.getInteger("resultCode") == 0) {
+                JSONObject dataObj = blacklistResponse.getJSONObject("data");
+                if (dataObj != null && dataObj.getJSONArray("recordList") != null) {
+                    JSONArray blacklistRecords = dataObj.getJSONArray("recordList");
+                    int totalRecords = blacklistRecords.size();
+                    
+                    System.out.println("🚫 [黑名单查询] 共 " + totalRecords + " 条记录");
+                    
+                    // 第二步：先筛选出车主为"未知车主"的记录
+                    for (int i = 0; i < totalRecords; i++) {
+                        JSONObject blacklistRecord = blacklistRecords.getJSONObject(i);
+                        String plateNumber = blacklistRecord.getString("carCode");
+                        String owner = blacklistRecord.getString("owner");
+                        
+                        if (plateNumber != null && !plateNumber.isEmpty()) {
+                            // 筛选车主为"未知车主"的记录
+                            if ("未知车主".equals(owner)) {
+                                unknownOwnerPlates.add(plateNumber);
+                                System.out.println("🔍 [筛选未知车主] 车牌: " + plateNumber + ", 车主: " + owner);
+                            }
+                        }
+                    }
+                    
+                    System.out.println("📋 [筛选结果] 共找到 " + unknownOwnerPlates.size() + " 个未知车主的黑名单车辆");
+                    
+                    // 第三步：对筛选出的"未知车主"车辆查询月票信息
+                    for (int i = 0; i < unknownOwnerPlates.size(); i++) {
+                        String plateNumber = unknownOwnerPlates.get(i);
+                        
+                        System.out.println("🎫 [月票查询] 检查未知车主车牌: " + plateNumber + " (" + (i+1) + "/" + unknownOwnerPlates.size() + ")");
+                        
+                        // 查询该车牌的有效月票信息
+                        HashMap<String, Object> monthTicketParams = new HashMap<>();
+                        monthTicketParams.put("parkCodeList", Arrays.asList(parkCode));
+                        monthTicketParams.put("carCode", plateNumber);
+                        monthTicketParams.put("pageNum", 1);
+                        monthTicketParams.put("pageSize", 5);
+                        monthTicketParams.put("effective", 0);
+                        
+                        try {
+                            JSONObject monthTicketResponse = aikeConfig.downHandler(
+                                AIKEConfig.AK_URL, 
+                                AIKEConfig.AK_KEY, 
+                                AIKEConfig.AK_SECRET, 
+                                "getOnlineMonthTicketByCarCard", 
+                                monthTicketParams);
+                            
+                            if (monthTicketResponse != null && monthTicketResponse.getInteger("resultCode") == 0) {
+                                JSONObject monthTicketData = monthTicketResponse.getJSONObject("data");
+                                if (monthTicketData != null && monthTicketData.getJSONArray("recordList") != null) {
+                                    JSONArray monthTicketRecords = monthTicketData.getJSONArray("recordList");
+                                    
+                                    // 检查是否有物业员工车辆的月票
+                                    for (int j = 0; j < monthTicketRecords.size(); j++) {
+                                        JSONObject monthTicket = monthTicketRecords.getJSONObject(j);
+                                        String ticketName = monthTicket.getString("ticketName");
+                                        String userName = monthTicket.getString("userName");
+                                        
+                                        if ("物业员工车辆".equals(ticketName)) {
+                                            propertyStaffPlates.add(plateNumber);
+                                            System.out.println("✅ [找到物业员工] 车牌: " + plateNumber + 
+                                                ", 月票类型: " + ticketName + 
+                                                ", 月票车主: " + userName);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Exception e) {
+                            System.err.println("⚠️ [月票查询异常] 车牌: " + plateNumber + ", 跳过处理");
+                        }
+                        
+                        // 每5个车牌输出一次进度
+                        if ((i + 1) % 5 == 0) {
+                            long currentTime = System.currentTimeMillis();
+                            System.out.println("📊 [进度] 已检查 " + (i + 1) + "/" + unknownOwnerPlates.size() + 
+                                " 个未知车主车牌，耗时: " + (currentTime - startTime) + "ms");
+                        }
+                    }
+                }
+            } else {
+                result.put("success", false);
+                result.put("message", "查询黑名单失败");
+                result.put("data", propertyStaffPlates);
+                return ResponseEntity.ok(result);
+            }
+            
+            long endTime = System.currentTimeMillis();
+            System.out.println("🎯 [查询完成] 筛选了 " + unknownOwnerPlates.size() + " 个未知车主，找到 " + 
+                propertyStaffPlates.size() + " 个物业员工车辆，总耗时: " + (endTime - startTime) + "ms");
+            
+            result.put("success", true);
+            result.put("message", "查询成功");
+            result.put("data", propertyStaffPlates);
+            result.put("count", propertyStaffPlates.size());
+            result.put("parkCode", parkCode);
+            result.put("totalTime", endTime - startTime);
+            result.put("unknownOwnerCount", unknownOwnerPlates.size());
+            result.put("unknownOwnerPlates", unknownOwnerPlates);
+            
+            return ResponseEntity.ok(result);
+            
+        } catch (Exception e) {
+            long endTime = System.currentTimeMillis();
+            System.err.println("❌ [查询异常] " + e.getMessage() + ", 耗时: " + (endTime - startTime) + "ms");
+            
+            result.put("success", false);
+            result.put("message", "查询异常: " + e.getMessage());
+            result.put("data", propertyStaffPlates);
+            result.put("totalTime", endTime - startTime);
+            
+            return ResponseEntity.ok(result);
+        }
+    }
+
+    /**
      * 获取客户端IP地址
      */
     private String getClientIpAddress(javax.servlet.http.HttpServletRequest request) {

@@ -952,6 +952,130 @@ public class VehicleReservationController {
     }
 
     /**
+     * 接收黑名单上报数据
+     * 
+     * @param message 黑名单上报数据（JSON字符串格式）
+     * @return 响应结果
+     */
+    @ApiOperation("接收黑名单上报数据")
+    @RequestMapping("/reportBlacklist")
+    public ResponseEntity<AIKEResult> reportBlacklist(@RequestBody String message) {
+        try {
+            logger.info("🚫 [黑名单上报] 接收到黑名单上报数据");
+            
+            // 解析JSON字符串
+            JSONObject jsonData = JSONObject.parseObject(message);
+            
+            // 输出解析后的数据
+            logger.info("✅ [黑名单上报] 解析后的数据:");
+            logger.info("  📌 完整JSON: {}", jsonData.toJSONString());
+            
+            // 遍历并输出所有字段
+            if (jsonData != null && !jsonData.isEmpty()) {
+                for (String key : jsonData.keySet()) {
+                    Object value = jsonData.get(key);
+                    logger.info("  📌 字段 [{}] = {}", key, value);
+                }
+            } else {
+                logger.warn("⚠️ [黑名单上报] JSON数据为空");
+                HashMap<Object, Object> hashEmptyMap = new HashMap<>();
+                return ResponseEntity.ok(AIKEResult.success(hashEmptyMap));
+            }
+            
+            // 提取关键字段
+            String carCode = jsonData.getString("carCode");
+            Integer operateType = jsonData.getInteger("operateType");
+            JSONArray parkList = jsonData.getJSONArray("parkList");
+            
+            logger.info("🚗 [黑名单上报] 车牌号: {}", carCode);
+            logger.info("🔧 [黑名单上报] 操作类型: {}", operateType);
+            logger.info("🏢 [黑名单上报] 车场列表: {}", parkList);
+            
+            // 验证必要参数
+            if (carCode == null || carCode.isEmpty()) {
+                logger.warn("⚠️ [黑名单上报] 车牌号为空，跳过处理");
+                HashMap<Object, Object> hashEmptyMap = new HashMap<>();
+                return ResponseEntity.ok(AIKEResult.success(hashEmptyMap));
+            }
+            
+            if (parkList == null || parkList.isEmpty()) {
+                logger.warn("⚠️ [黑名单上报] 车场列表为空，跳过处理");
+                HashMap<Object, Object> hashEmptyMap = new HashMap<>();
+                return ResponseEntity.ok(AIKEResult.success(hashEmptyMap));
+            }
+            
+            // 处理删除操作
+            if (operateType != null && operateType == 2) {
+                logger.info("🗑️ [黑名单上报] 检测到删除操作 (operateType=2)，开始删除违规记录");
+                
+                int totalDeleted = 0;
+                
+                // 遍历车场列表，删除对应车场的违规记录
+                for (int i = 0; i < parkList.size(); i++) {
+                    JSONObject parkInfo = parkList.getJSONObject(i);
+                    String parkName = parkInfo.getString("parkName");
+                    String parkCode = parkInfo.getString("parkCode");
+                    
+                    if (parkName != null && !parkName.isEmpty()) {
+                        logger.info("🏢 [违规记录删除] 开始删除车场 [{}] 中车牌 [{}] 的违规记录", parkName, carCode);
+                        
+                        try {
+                            // 调用违规服务删除记录，使用parkCode作为参数
+                            int deletedCount = violationsService.deleteViolationsByPlateAndPark(carCode, parkCode != null ? parkCode : parkName);
+                            totalDeleted += deletedCount;
+                            
+                            logger.info("✅ [违规记录删除] 车场 [{}] 删除了 {} 条违规记录", parkName, deletedCount);
+                            
+                        } catch (Exception e) {
+                            logger.error("❌ [违规记录删除] 删除车场 [{}] 违规记录时发生异常: {}", parkName, e.getMessage(), e);
+                        }
+                    } else {
+                        logger.warn("⚠️ [违规记录删除] 车场名称为空，跳过删除");
+                    }
+                }
+                
+                logger.info("🎯 [黑名单上报] 删除操作完成，共删除 {} 条违规记录", totalDeleted);
+                
+                // 记录详细信息
+                logger.info("📋 [黑名单详情] 车牌号: {}, 操作类型: 删除, 原因: {}", 
+                        carCode, jsonData.getString("reason"));
+                
+            } else {
+                // 非删除操作，仅记录日志
+                logger.info("📝 [黑名单上报] 操作类型: {}, 非删除操作，仅记录数据", operateType);
+                
+                // 记录更多详细信息用于调试
+                logger.info("📋 [黑名单详情] 车牌号: {}, 原因: {}, 类型: {}", 
+                        carCode, 
+                        jsonData.getString("reason"), 
+                        jsonData.getString("blacklistTypeName"));
+                
+                if (jsonData.getString("blacklistStartTime") != null) {
+                    logger.info("⏰ [黑名单时间] 开始时间: {}, 结束时间: {}", 
+                            jsonData.getString("blacklistStartTime"), 
+                            jsonData.getString("blacklistEndTime"));
+                }
+                
+                if (jsonData.getInteger("blacklistForeverFlag") != null) {
+                    logger.info("🔒 [黑名单标志] 永久拉黑: {}", 
+                            jsonData.getInteger("blacklistForeverFlag") == 1 ? "是" : "否");
+                }
+            }
+            
+            logger.info("✅ [黑名单上报] 处理成功: carCode={}, operateType={}", 
+                    carCode, operateType);
+            
+            HashMap<Object, Object> hashEmptyMap = new HashMap<>();
+            return ResponseEntity.ok(AIKEResult.success(hashEmptyMap));
+            
+        } catch (Exception e) {
+            logger.error("❌ [黑名单上报] 处理异常: {}", e.getMessage(), e);
+            HashMap<Object, Object> hashEmptyMap = new HashMap<>();
+            return ResponseEntity.ok(AIKEResult.success(hashEmptyMap));
+        }
+    }
+
+    /**
      * 处理 appointment 表查询和微信通知（独立执行，不受其他操作影响）
      */
     private void processAppointmentNotification(ReportCarOutData data) {

@@ -2,8 +2,8 @@ spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: 123456
-#    password: Xuer@271.HS
+#    password: 123456
+    password: Xuer@271.HS
     url: jdbc:mysql://localhost:3306/project_lzx?useUnicode=true&useSSL=false&characterEncoding=utf8&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&allowMultiQueries=true
 #    url: jdbc:mysql://121.41.131.154:3306/project_lzx?useUnicode=true&useSSL=false&characterEncoding=utf8&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&allowMultiQueries=true&autoReconnect=true
 #    url: jdbc:mysql://www.xuerparking.cn:3306/project_lzx?useUnicode=true&useSSL=false&characterEncoding=utf8&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&allowMultiQueries=true&autoReconnect=true
@@ -51,10 +51,10 @@ file:
 server:
   port: 8543
   # SSL配置已注释，如需启用HTTPS请取消注释
-#  ssl:
-#     key-store-password: 2xffjgct    #填写jks-password.txt文件内的密码。
-#     key-store-type: JKS #JKS格式证书密钥库类型。PFX格式的证书密钥库类型为PKCS12。
-#     key-store: www.xuerparking.cn.jks   #您需要使用实际的证书名称替换domain_name.jks。
+  ssl:
+     key-store-password: 2xffjgct    #填写jks-password.txt文件内的密码。
+     key-store-type: JKS #JKS格式证书密钥库类型。PFX格式的证书密钥库类型为PKCS12。
+     key-store: www.xuerparking.cn.jks   #您需要使用实际的证书名称替换domain_name.jks。
 swagger:
   basePackage: com.parkingmanage
   title: 雪儿泊车管理系统
@@ -166,9 +166,9 @@ parking:
 aliyun:
   sms:
     # 阿里云AccessKey ID（请替换为您的实际值）
-    accessKeyId: ${ALIYUN_ACCESS_KEY_ID:your-access-key-id}
+    accessKeyId: ${ALIYUN_ACCESS_KEY_ID:your_access_key_id}
     # 阿里云AccessKey Secret（请替换为您的实际值）
-    accessKeySecret: ${ALIYUN_ACCESS_KEY_SECRET:your-access-key-secret}
+    accessKeySecret: ${ALIYUN_ACCESS_KEY_SECRET:your_access_key_secret}
     # 短信签名名称（请替换为您申请的签名）
     signName: 东北林业大学
     # 短信模板代码（请替换为您申请的模板代码）
@@ -202,3 +202,10 @@ bigmodel:
   
   # 重试次数
   retry-times: 3
+
+# 访客预约查询接口配置
+visitor:
+  reservation:
+    api:
+      # 访客预约查询接口地址
+      url: http://202.118.214.8:8675
